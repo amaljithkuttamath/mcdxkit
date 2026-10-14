@@ -2,7 +2,7 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 function harness(){
  const controls=[],nodes=new Map(),timers=new Map();let resolveFetch,nextTimer=0;
- function element(tag='div') {const e={tagName:tag,hidden:false,disabled:false,isConnected:true,value:'',dataset:{},children:[],classList:{add(){},remove(){},toggle(){}},setAttribute(){},addEventListener(){},append(...kids){this.children.push(...kids);},replaceChildren(...kids){this.children=kids;},querySelector(){return null;},close(){},scrollIntoView(){}};if(['button','input','select','textarea'].includes(tag))controls.push(e);return e;}
+ function element(tag='div') {const e={tagName:tag,hidden:false,disabled:false,isConnected:true,value:'',dataset:{},children:[],attributes:{},events:{},classList:{add(){},remove(){},toggle(){}},setAttribute(key,value){this.attributes[key]=value;},addEventListener(name,fn){this.events[name]=fn;},append(...kids){this.children.push(...kids);},replaceChildren(...kids){this.children=kids;},querySelector(){return null;},close(){},scrollIntoView(){}};if(['button','input','select','textarea'].includes(tag))controls.push(e);return e;}
  const html=fs.readFileSync('src/mcdxkit/web/documents.html','utf8');for(const match of html.matchAll(/<(\w+)[^>]*\bid="([^"]+)"/g))nodes.set(match[2],element(match[1]));
  nodes.get('pdfs').previousElementSibling=element('label');
  const context=vm.createContext({document:{getElementById:id=>nodes.get(id),createElement:element,querySelector:()=>null,querySelectorAll:selector=>selector==='button,input,select,textarea'?controls:[]},fetch:()=>new Promise(resolve=>{resolveFetch=resolve;}),Option:function(text,value){return {text,value};},URLSearchParams,setTimeout:fn=>{timers.set(++nextTimer,fn);return nextTimer;},clearTimeout:id=>timers.delete(id),location:{search:''}});
@@ -97,4 +97,26 @@ test('status polling defers during actions and stops after a network error',asyn
  assert.equal(h.timers.size,0);
  assert.match(h.nodes.get('notice').textContent,/Refresh status/);
  assert.equal(vm.runInContext('project.sources[0].status',h.context),'parsing');
+});
+
+
+test('package worksheet preview loads the verified result in a sandbox and reuses its frame',async()=>{
+ const h=harness();h.finish();await new Promise(resolve=>setImmediate(resolve));
+ vm.runInContext("project={id:'library',sources:[],runs:[{id:'run',created:0,check_summary:{total:0}}]};renderPackages();",h.context);
+ const row=h.nodes.get('packages-view').children[0],buttons=row.children.find(n=>n.className==='actions');
+ const preview=buttons.children.find(n=>n.textContent==='View calculated worksheet');
+ assert.ok(preview,'Outputs must open the full calculated worksheet, not only the narrative report');
+ vm.runInContext("var previewRequests=[];fetch=async url=>{previewRequests.push(url);return {ok:true,text:async()=>'<p>Computed result</p>'};};",h.context);
+ await preview.events.click();
+ const frame=row.children.find(n=>n.tagName==='iframe');
+ assert.equal(frame.title,'Calculated worksheet');
+ assert.equal(frame.attributes.sandbox,'');
+ assert.equal(frame.srcdoc,'<p>Computed result</p>');
+ assert.equal(vm.runInContext('previewRequests[0]',h.context),'/api/documents/library/runs/run/calculation.html');
+ await preview.events.click();
+ assert.equal(row.children.filter(n=>n.tagName==='iframe').length,1);
+ vm.runInContext("fetch=async()=>({ok:false,json:async()=>({error:'Package changed after generation.'})});",h.context);
+ await preview.events.click();
+ assert.match(h.nodes.get('notice').textContent,/Package changed/);
+ assert.equal(frame.srcdoc,'');
 });

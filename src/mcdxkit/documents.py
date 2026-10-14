@@ -389,7 +389,7 @@ class DocumentWorkflow:
     def artifact(self, pid, rid, name):
         state = self.get(pid)
         run = next((r for r in state['runs'] if r['id'] == rid), None)
-        if run is None or name not in ('package.zip', 'report.html', 'report.md', 'manifest.json'):
+        if run is None or name not in ('package.zip', 'report.html', 'report.md', 'manifest.json', 'calculation.html'):
             raise ValueError('Document artifact not found.')
         folder = self.root / pid / 'runs' / identifier(rid)
         package = folder / 'package.zip'

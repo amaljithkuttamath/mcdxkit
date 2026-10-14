@@ -68,6 +68,21 @@ class DocumentTests(unittest.TestCase):
             self.assertIn('report.html', z.namelist())
         self.assertEqual(self.flow.get(self.pid)['runs'][0]['id'], result['id'])
 
+    def test_calculated_preview_is_the_packaged_engine_output_and_rejects_tampering(self):
+        import zipfile
+        _, draft = self.evidence_draft()
+        self.flow.review(self.pid, draft['id'], [], 'Synthetic reviewer', 'Retain template inputs')
+        result = self.flow.build(self.pid, draft['id'])
+        calculated = self.flow.artifact(self.pid, result['id'], 'calculation.html')
+        with zipfile.ZipFile(self.flow.artifact(self.pid, result['id'], 'package.zip')) as archive:
+            self.assertEqual(calculated.read_bytes(), archive.read('calculation.html'))
+        for name in ('../calculation.html', 'sources/loads.txt', '.credentials.json'):
+            with self.subTest(name=name), self.assertRaisesRegex(ValueError, 'not found'):
+                self.flow.artifact(self.pid, result['id'], name)
+        calculated.write_text('<p>Altered result</p>')
+        with self.assertRaisesRegex(ValueError, 'changed'):
+            self.flow.artifact(self.pid, result['id'], 'calculation.html')
+
     def test_forged_citation_wrong_units_and_load_overrides_are_rejected(self):
         from mcdxkit.documents import validate_draft
         _, draft = self.evidence_draft()

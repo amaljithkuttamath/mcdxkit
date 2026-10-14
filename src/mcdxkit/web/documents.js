@@ -177,7 +177,28 @@ function renderDraft(draft){
  if(draft.review){build.id='build-package';form.append(build);for(const input of [...boxes,reviewer,note])input.addEventListener('input',()=>{reviewDirty=true;build.disabled=true;notify('Review changed. Save it before calculating.');});}
  paper.append(form);
 }
-function renderPackages(){const parent=$('packages-view');parent.replaceChildren();if(!project.runs.length)parent.append(element('div','Review a draft, then calculate to create a package.','paper'));for(const result of [...project.runs].reverse()){const row=element('article',undefined,'paper');row.append(element('h2','Calculation package'),element('p',new Date(result.created*1000).toLocaleString(),'muted'),element('p',result.check_summary?.total?`${result.check_summary.passed} checks passed · ${result.check_summary.failed} failed`:'Calculated · No checks found'),element('p','Calcpad calculation completed. Prime-native execution unverified.','muted'));const buttons=element('div',undefined,'actions');buttons.append(action('Download package ZIP',()=>run('Preparing download…',async()=>{save(await (await artifact(result,'package.zip')).blob(),'design-package.zip');notify('Package download started. Originals, formulas, calculation and evidence are included.');})),action('Read report',()=>run('Opening report…',async()=>{const value=await (await artifact(result,'report.html')).text();const frame=element('iframe');frame.title='Generated design report';frame.className='report-frame';frame.setAttribute('sandbox','');frame.srcdoc=value;row.append(frame);notify('Generated report loaded. Download and extract the ZIP to follow its worksheet and original-source links.');})));row.append(buttons);parent.append(row);}}
+function renderPackages(){
+ const parent=$('packages-view');parent.replaceChildren();
+ if(!project.runs.length)parent.append(element('div','Review a draft, then calculate to create a package.','paper'));
+ for(const result of [...project.runs].reverse()){
+  const row=element('article',undefined,'paper');
+  row.append(element('h2','Calculation package'),element('p',new Date(result.created*1000).toLocaleString(),'muted'),element('p',result.check_summary?.total?`${result.check_summary.passed} checks passed · ${result.check_summary.failed} failed`:'Calculated · No checks found'),element('p','Calcpad calculation completed. Prime-native execution unverified.','muted'));
+  let frame=null;
+  function preview(label,name,title,message){
+   return action(label,()=>run('Opening '+title.toLowerCase()+'…',async()=>{
+    if(frame)frame.srcdoc='';
+    const value=await (await artifact(result,name)).text();
+    if(!frame){frame=element('iframe');frame.className='report-frame';frame.setAttribute('sandbox','');row.append(frame);}
+    frame.title=title;frame.srcdoc=value;frame.scrollIntoView({block:'start'});notify(message);
+   }));
+  }
+  const buttons=element('div',undefined,'actions');
+  buttons.append(preview('View calculated worksheet','calculation.html','Calculated worksheet','Full Calcpad worksheet loaded from this package. Prime-native execution remains unverified.'),
+   preview('Read report','report.html','Generated design report','Generated report loaded. Download and extract the ZIP to follow its worksheet and original-source links.'),
+   action('Download package ZIP',()=>run('Preparing download…',async()=>{save(await (await artifact(result,'package.zip')).blob(),'design-package.zip');notify('Package download started. Originals, formulas, calculation and evidence are included.');})));
+  row.append(buttons);parent.append(row);
+ }
+}
 $('projects').onchange=()=>{if($('projects').value)run('Loading project…',()=>select($('projects').value));};
 $('create-form').onsubmit=e=>{e.preventDefault();run('Creating document library…',async()=>{const library=await api('/api/documents/create',{title:$('project-title').value});await select(library.id);tab('answers');notify('Library created. Add PDFs to begin.');});};
 $('connect-form').onsubmit=e=>{e.preventDefault();run('Checking loads and template…',async()=>{async function upload(file,kind){const r=await fetch('/api/upload?'+new URLSearchParams({name:file.name,kind}),{method:'POST',headers:{'X-MCDXKit-Token':token,'Content-Type':'application/octet-stream'},body:file});const body=await r.json();if(!r.ok)throw new Error(body.error);return body;}const raw=await upload($('raw-file').files[0],'report');const template=await upload($('template-file').files[0],'template');const value=$('cases').value.trim(),map=$('input-map').value.trim();project=await api('/api/documents/connect',{project:project.id,id:raw.id,template_id:template.id,cases:value?value.split(/[\s,]+/).map(Number):null,input_map:map?JSON.parse(map):null,load_source:$('basis').value});await select(project.id);tab('draft');notify('Calculation files connected. Your PDFs and saved answers are preserved.');});};
