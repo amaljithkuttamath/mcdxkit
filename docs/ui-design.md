@@ -42,3 +42,13 @@ Case selection and implementation details stay behind disclosures. Status text d
 Use 44px touch targets where controls are operated, visible keyboard focus, tabular numbers and at least 4.5:1 text contrast. Buttons use the supplied 0.96 press scale, except static high-frequency page controls. Interactive transitions use `cubic-bezier(0.2, 0, 0, 1)`, at most 150ms, and disable under reduced motion. No page-load animation.
 
 Verify desktop and mobile, input and empty states, keyboard focus, selected/disabled controls, errors, loading feedback, thumbnail navigation and search. The pasted ui-ux-pro-max database scripts and linked better-ui recipes were not supplied or installed; this implementation uses the provided prose rules, not a claimed database match.
+
+## Document-authoring workspace
+
+Both calculation and document workspaces follow the user’s updated Apple-inspired direction: system typography (`-apple-system` first), pale neutral surfaces, restrained translucency in the toolbar, soft depth and blue actions. This supersedes the earlier Plex/graphite direction for application chrome; preserve original document typography. Keep a compact file rail and a large document canvas. Project creation and service credentials belong in labelled modal dialogs, not long sidebar forms. The document library starts with Sources and Answers, without calculation prerequisites. Connecting calculation files unlocks Design basis and Package. The calculation workspace remains a visible entry/return point; do not present document drafting as a replacement calculation engine.
+
+Use the single blue action colour for draft/review actions, distinguish original PDF selection in the file rail, and keep unresolved evidence visible in the draft. Empty states provide a working file action. Modal errors stay visible inside the active dialog, entered values survive errors, and Escape/close restores focus.
+
+## Civil engineering project notebook
+
+Keep Documents and Calculations in a shared header. The library notebook has persistent Questions, Source evidence, Design basis and Outputs sections; section controls jump within the work rather than hiding it. Sources remain searchable in a bounded file rail. Put the question composer above answers so large libraries cannot push the primary task below a long document list. Advanced service configuration belongs in a modal. Preserve project identity when moving to Calculations and restore connected snapshots, case selections and explicit mappings through the shared engine. A saved answer or calculation is historical evidence, never silently updated by new documents.

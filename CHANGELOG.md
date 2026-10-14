@@ -4,6 +4,10 @@ User-visible changes to MCDXKit (formerly gdcalc). The format follows [Keep a Ch
 
 ## Unreleased
 
+- Discover supported free OpenRouter models from the browser after entering a key, with saved-key refresh and explicit connection errors.
+
+- Document libraries can now start without calculation files: add PDFs, index, ask cited questions, then connect a validated report/template while retaining sources and answers.
+
 - Add source-backed design packages: persistent PDF evidence, RAGFlow indexing/retrieval, OpenRouter free-only drafts, explicit input review, and calculated report ZIPs through the shared CLI/browser workflow. Includes browser API-key settings with private server-side storage and pinned local deployment preparation.
 
 - Validate the template against the raw report before preview: expose mapping, unit, layout and pile-capacity problems in Inputs, refresh checks after input changes, and share preflight checks with native generation.

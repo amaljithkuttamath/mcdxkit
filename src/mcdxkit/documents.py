@@ -8,6 +8,7 @@ import secrets
 import shutil
 import sqlite3
 import time
+import tempfile
 import zipfile
 from contextlib import contextmanager
 from pathlib import Path
@@ -118,25 +119,18 @@ class DocumentWorkflow:
             records = [json.loads(r[0]) for r in db.execute('SELECT data FROM projects ORDER BY rowid DESC LIMIT 100')]
         return [{k: p[k] for k in ('id', 'title', 'created')} for p in records]
 
-    def create(self, title, report, template, *, cases=None, input_map=None, load_source='effects'):
+    def create(self, title, report=None, template=None, *, cases=None, input_map=None, load_source='effects'):
         title = text(title, 'Project title', 160)
-        report, template = Path(report), Path(template)
-        if report.stat().st_size > 16*1024*1024 or template.stat().st_size > 32*1024*1024:
-            raise ValueError('Report/template exceeds the conversion upload limit.')
-        found = engine.inspect_report(report, template=template, cases=cases, input_map=input_map, load_source=load_source)
-        if found.get('template_validation', {}).get('status') != 'ready':
-            raise ValueError('Resolve case selection and template input mapping in the conversion workflow first.')
+        if (report is None) != (template is None):
+            raise ValueError('Provide both the raw report and Mathcad template, or neither to start a library.')
         pid = secrets.token_hex(16)
         folder = self.root / pid
         folder.mkdir()
         try:
-            shutil.copyfile(report, folder / 'loads.txt'); shutil.copyfile(template, folder / 'template.mcdx')
             state = {'id': pid, 'title': title, 'created': time.time(), 'revision': 0, 'sources': [],
-                     'dataset_id': None, 'drafts': [], 'runs': [],
-                     'report_sha256': digest((folder / 'loads.txt').read_bytes()),
-                     'template_sha256': digest((folder / 'template.mcdx').read_bytes()),
-                     'template_inputs': engine.inspect_template(folder / 'template.mcdx', input_map=input_map),
-                     'options': {'cases': found['selected_cases'], 'input_map': input_map, 'load_source': load_source}}
+                     'dataset_id': None, 'answers': [], 'drafts': [], 'runs': []}
+            if report is not None:
+                state.update(self.snapshot_calculation(folder, report, template, cases, input_map, load_source))
             with self.connection() as db:
                 db.execute('INSERT INTO projects VALUES (?,?)', (pid, json.dumps(state)))
             return state
@@ -144,10 +138,58 @@ class DocumentWorkflow:
             shutil.rmtree(folder)
             raise
 
+    @staticmethod
+    def snapshot_calculation(folder, report, template, cases, input_map, load_source):
+        if report is None or template is None:
+            raise ValueError('Provide both the raw report and Mathcad template.')
+        report, template = Path(report), Path(template)
+        if report.stat().st_size > 16*1024*1024 or template.stat().st_size > 32*1024*1024:
+            raise ValueError('Report/template exceeds the conversion upload limit.')
+        if any((folder/name).exists() for name in ('loads.txt', 'template.mcdx')):
+            raise ValueError('Calculation snapshots already exist; create another project rather than overwrite them.')
+        # Inspect the exact stored bytes, not a mutable external source path.
+        with tempfile.TemporaryDirectory(dir=folder, prefix='.inputs-') as staging:
+            raw, model = Path(staging)/'loads.txt', Path(staging)/'template.mcdx'
+            shutil.copyfile(report, raw); shutil.copyfile(template, model)
+            found = engine.inspect_report(raw, template=model, cases=cases, input_map=input_map, load_source=load_source)
+            if found.get('template_validation', {}).get('status') != 'ready':
+                raise ValueError('Resolve case selection and template input mapping in the calculation workspace first.')
+            result = {'report_sha256': file_digest(raw), 'template_sha256': file_digest(model),
+                      'report_name': report.name, 'template_name': template.name,
+                      'template_inputs': engine.inspect_template(model, input_map=input_map),
+                      'options': {'cases': found['selected_cases'], 'input_map': input_map, 'load_source': load_source}}
+            raw.rename(folder/'loads.txt'); model.rename(folder/'template.mcdx')
+            return result
+
+    def attach_calculation(self, pid, report, template, *, cases=None, input_map=None, load_source='effects'):
+        with self.edit(pid) as state:
+            self.verify(state)
+            if state.get('report_sha256'):
+                raise ValueError('A calculation is already connected. Create another project for different calculation files.')
+            folder = self.root / pid
+            # Reject orphan snapshots as well; never overwrite a previous source.
+            if any((folder/name).exists() for name in ('loads.txt', 'template.mcdx')):
+                raise ValueError('Calculation snapshots already exist; create another project.')
+            try:
+                state.update(self.snapshot_calculation(folder, report, template, cases, input_map, load_source))
+            except Exception:
+                for name in ('loads.txt', 'template.mcdx'):
+                    (folder/name).unlink(missing_ok=True)
+                raise
+            state['revision'] += 1
+        return self.get(pid)
+
+    @staticmethod
+    def require_calculation(state):
+        if not state.get('report_sha256'):
+            raise ValueError('Connect a raw report and Mathcad template before preparing or calculating a design package. You can ask the library without them.')
+
     def verify(self, state):
         folder = self.root / state['id']
-        for name, expected in [('loads.txt', state['report_sha256']), ('template.mcdx', state['template_sha256'])] + [
-                ('sources/' + s['id'] + '.pdf', s['sha256']) for s in state['sources']]:
+        files = [('sources/' + s['id'] + '.pdf', s['sha256']) for s in state['sources']]
+        if state.get('report_sha256'):
+            files += [('loads.txt', state['report_sha256']), ('template.mcdx', state['template_sha256'])]
+        for name, expected in files:
             path = folder / name
             if path.is_symlink() or not path.is_file() or file_digest(path) != expected:
                 raise ValueError('Project source files changed; restore the original or create a new project revision.')
@@ -215,12 +257,19 @@ class DocumentWorkflow:
                                             else 'failed' if run in ('FAIL', 'FAILED', '4', 'CANCEL', '2', 'DONE', '3') else 'parsing')
         return self.get(pid)
 
+    def ask(self, pid, question, client=None, writer=None):
+        return self.generate(pid, question, client, writer, purpose='answer')
+
     def draft(self, pid, question, client=None, writer=None):
-        question = text(question, 'Draft request', 2000)
+        return self.generate(pid, question, client, writer, purpose='design_basis')
+
+    def generate(self, pid, question, client, writer, *, purpose):
+        question = text(question, 'Question or draft request', 2000)
         with self.edit(pid) as state:
             self.verify(state)
+            if purpose == 'design_basis': self.require_calculation(state)
             if not state['sources'] or any(s['status'] != 'ready' for s in state['sources']):
-                raise ValueError('All project sources must finish indexing before drafting. Refresh indexing status.')
+                raise ValueError('All project sources must finish indexing before asking or drafting. Refresh indexing status.')
             client = client or ModelConfig.for_workspace(self.root).ragflow()
             writer = writer or ModelConfig.for_workspace(self.root).writer()
             owned = {s['document_id']: s for s in state['sources']}
@@ -239,12 +288,24 @@ class DocumentWorkflow:
                                  'chunk_id': str(chunk.get('id', ''))[:200], 'positions': positions,
                                  'text': content[:6000]})
             if not evidence: raise ValueError('No supporting evidence found. Narrow the request or add the missing source.')
-            content = validate_draft(writer.draft({'project': state['title'], 'request': question,
-                'inputs': state['template_inputs']['inputs'], 'evidence': evidence}), state['template_inputs'], evidence)
+            inputs = state['template_inputs'] if purpose == 'design_basis' else {'inputs': []}
+            calculation = None
+            if purpose == 'design_basis':
+                folder = self.root / pid
+                found = engine.inspect_report(folder/'loads.txt', template=folder/'template.mcdx', **state['options'])
+                calculation = {k: found[k] for k in ('selected_cases', 'load_source', 'envelope', 'governing')}
+                calculation.update(report_sha256=state['report_sha256'], template_sha256=state['template_sha256'],
+                                   units={'P': 'kip', 'Vy': 'kip', 'Vz': 'kip', 'My': 'kip-in', 'Mz': 'kip-in'},
+                                   qualification='Independent component extrema are not concurrent load combinations.')
+            context = {'project': state['title'], 'purpose': purpose, 'request': question,
+                       'inputs': inputs['inputs'], 'calculation': calculation, 'evidence': evidence}
+            content = validate_draft(writer.draft(context), inputs, evidence)
             draft = {'id': secrets.token_hex(16), 'created': time.time(), 'revision': state['revision'],
-                     'request': question, 'model': writer.model, 'content': content, 'evidence': evidence, 'review': None}
-            if len(state['drafts']) >= 100: raise ValueError('Project contains 100 drafts. Create a new project revision.')
-            state['drafts'].append(draft)
+                     'request': question, 'model': writer.model, 'content': content, 'evidence': evidence, 'review': None,
+                     'purpose': purpose, 'calculation_context': calculation}
+            collection = state.setdefault('answers' if purpose == 'answer' else 'drafts', [])
+            if len(collection) >= 100: raise ValueError('Project contains 100 answers or drafts. Create a new project revision.')
+            collection.append(draft)
         return draft
 
     @staticmethod
@@ -267,6 +328,7 @@ class DocumentWorkflow:
 
     def build(self, pid, did):
         with self.edit(pid) as state:
+            self.require_calculation(state)
             self.verify(state)
             draft = self.selected_draft(state, did)
             if draft['review'] is None: raise ValueError('Complete the draft review before building a package.')
@@ -281,6 +343,7 @@ class DocumentWorkflow:
                 manifest = {'schema': 'mcdxkit-document-package/1', 'project_id': pid, 'title': state['title'],
                             'run_id': rid, 'draft_id': did, 'created': time.time(), 'model': draft['model'],
                             'review': draft['review'], 'draft': content, 'evidence': draft['evidence'],
+                            'calculation_context': draft.get('calculation_context'),
                             'sources': [{k: s[k] for k in ('id', 'name', 'sha256', 'bytes')} for s in state['sources']],
                             'report_sha256': state['report_sha256'], 'template_sha256': state['template_sha256'],
                             'overrides': overrides, 'native_execution_verified': False,

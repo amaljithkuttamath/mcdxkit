@@ -25,6 +25,8 @@ from .review import runner as review_runner
 from .service import MIB, RequestError, Session
 
 STATIC = Path(__file__).with_name('web')
+PDF_ASSETS = {p.relative_to(STATIC / 'pdfjs').as_posix(): p
+              for p in (STATIC / 'pdfjs').rglob('*') if p.is_file() and not p.is_symlink()}
 LOGIN_DELAY_STEP = 0.1  # seconds added per failed login in the last minute
 LOGIN_DELAY_MAX = 1.0
 SECURITY_HEADERS = {
@@ -215,7 +217,7 @@ def create_app(*, origin, template=None, output_dir='mcdxkit-output', access_tok
             raw = await read_body(request, 256 * MIB, 'application/octet-stream')
             return await run_in_threadpool(execute, lambda: documents().add_source(
                 request.query_params.get('project'), request.query_params.get('name'), raw))
-        if action not in ('configure', 'create', 'show', 'ingest', 'status', 'draft', 'review', 'build'):
+        if action not in ('configure', 'models', 'create', 'connect', 'calculation', 'ask', 'show', 'ingest', 'status', 'draft', 'review', 'build'):
             raise RequestError('Not found.', 404)
         try:
             data = json.loads(await read_body(request, 16384, 'application/json'))
@@ -227,16 +229,30 @@ def create_app(*, origin, template=None, output_dir='mcdxkit-output', access_tok
             if action == 'configure':
                 from .document_clients import save_configuration
                 return save_configuration(flow.root, data)
+            if action == 'models':
+                from .document_clients import ModelConfig
+                if set(data) - {'router_key'}: raise ValueError('Unknown model discovery fields.')
+                return ModelConfig.for_workspace(flow.root).available_models(data.get('router_key', ''))
             pid = data.get('project')
-            if action == 'create':
+            if action == 'create' and not data.get('id'):
+                if data.get('template_id'): raise ValueError('Provide both the report and template, or neither.')
+                return flow.create(data.get('title'))
+            if action in ('create', 'connect'):
                 report = state.get(data.get('id'), ['report'])['path']
                 template = state.get(data['template_id'], ['template'])['path'] if data.get('template_id') else state.template
                 if template is None: raise ValueError('Select a template first.')
-                return flow.create(data.get('title'), report, template, cases=state.cases(data.get('cases')),
-                                   input_map=data.get('input_map'), load_source=state.basis(data))
+                options = {'cases': state.cases(data.get('cases')), 'input_map': data.get('input_map'), 'load_source': state.basis(data)}
+                if action == 'connect': return flow.attach_calculation(pid, report, template, **options)
+                return flow.create(data.get('title'), report, template, **options)
+            if action == 'calculation':
+                project = flow.get(pid); flow.verify(project); flow.require_calculation(project)
+                return {'report': state.register(flow.root / pid / 'loads.txt', 'report'),
+                        'template': state.register(flow.root / pid / 'template.mcdx', 'template'),
+                        'options': project['options']}
             if action == 'show': return flow.get(pid)
             if action == 'ingest': return flow.ingest(pid)
             if action == 'status': return flow.status(pid)
+            if action == 'ask': return flow.ask(pid, data.get('question'))
             if action == 'draft': return flow.draft(pid, data.get('request'))
             if action == 'review': return flow.review(pid, data.get('draft'), data.get('accepted'), data.get('reviewer'), data.get('note'))
             return flow.build(pid, data.get('draft'))
@@ -272,9 +288,9 @@ def create_app(*, origin, template=None, output_dir='mcdxkit-output', access_tok
 
     @app.get('/pdfjs/{asset:path}')
     async def pdf_asset(asset: str):
-        root = (STATIC / 'pdfjs').resolve()
-        path = (root / asset).resolve()
-        if not path.is_relative_to(root) or not path.is_file() or path.is_symlink():
+        # Lookup only packaged assets; never form a filesystem path from the request.
+        path = PDF_ASSETS.get(asset)
+        if path is None:
             raise RequestError('Not found.', 404)
         suffix = path.suffix
         media = {'mjs': 'text/javascript', 'js': 'text/javascript', 'wasm': 'application/wasm'}.get(suffix.lstrip('.'), 'application/octet-stream')
@@ -282,7 +298,7 @@ def create_app(*, origin, template=None, output_dir='mcdxkit-output', access_tok
 
     @app.get('/{asset}')
     async def asset(asset: str):
-        if asset not in ('app.js', 'style.css', 'documents.js', 'documents.css'):
+        if asset not in ('app.js', 'style.css', 'documents.js', 'documents.css', 'workspace.css'):
             raise RequestError('Not found.', 404)
         return FileResponse(STATIC / asset, media_type='text/javascript' if asset.endswith('.js') else 'text/css')
 

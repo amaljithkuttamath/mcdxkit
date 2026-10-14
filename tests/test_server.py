@@ -54,6 +54,19 @@ class ServerTests(unittest.TestCase):
         return self.request('POST', '/api/upload?' + urlencode({'name': name, 'kind': kind}),
                             report().encode() if content is None else content)
 
+    def test_model_discovery_requires_session_and_never_persists_key(self):
+        with mock.patch('mcdxkit.document_clients.HTTPClient.request', return_value={'data': []}) as request:
+            status, body = self.request('POST', '/api/documents/models', {'router_key': 'private-test-key'}, authenticated=False)
+            self.assertIn(status, (401, 403))
+            request.assert_not_called()
+            status, body = self.request('POST', '/api/documents/models', {'router_key': 'private-test-key'})
+            self.assertEqual(status, 200, body)
+            self.assertEqual(body, {'models': [], 'free_only': True})
+            request.assert_called_once_with('GET', '/models/user')
+            self.assertFalse((self.root / 'results/.documents/.credentials.json').exists())
+            status, _ = self.request('POST', '/api/documents/models', {'url': 'http://elsewhere', 'router_key': 'private-test-key'})
+            self.assertEqual(status, 400)
+
     def test_document_projects_reuse_uploaded_inputs_and_protect_sources(self):
         _, raw = self.upload()
         status, project = self.request('POST', '/api/documents/create', {'id': raw['id'], 'title': 'Synthetic project'})
@@ -67,6 +80,29 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(self.request('POST', '/api/documents/create', {'id': '/etc/passwd', 'title': 'Forbidden'})[0], 404)
         self.assertEqual(self.request('POST', '/api/documents/show', {'project': '../escape'})[0], 400)
         self.assertEqual(self.request('GET', '/documents')[0], 200)
+
+    def test_document_library_needs_no_inputs_and_connects_existing_uploads(self):
+        status, library = self.request('POST', '/api/documents/create', {'title': 'Independent library'})
+        self.assertEqual(status, 200, library)
+        self.assertNotIn('report_sha256', library)  # Even with a server default template.
+        pid = library['id']
+        _, source = self.request('POST', '/api/documents/upload?project='+pid+'&name=notes.pdf', b'%PDF-1.4 synthetic')
+        self.assertEqual(self.request('POST', '/api/documents/ask', {'project':pid, 'question':'Requirements?'}, authenticated=False)[0], 403)
+        status, error = self.request('POST', '/api/documents/draft', {'project':pid, 'request':'Design basis'})
+        self.assertEqual(status, 400); self.assertIn('Connect', error['error'])
+        _, raw = self.upload()
+        status, linked = self.request('POST', '/api/documents/connect', {'project':pid, 'id':raw['id'], 'cases':[1,7]})
+        self.assertEqual(status, 200, linked)
+        self.assertEqual(linked['sources'][0]['id'], source['id'])
+        self.assertEqual(linked['options']['cases'], [1,7])
+        status, restored = self.request('POST', '/api/documents/calculation', {'project':pid})
+        self.assertEqual(status, 200, restored)
+        self.assertEqual(restored['options']['cases'], [1,7])
+        status, inspection = self.request('POST', '/api/inspect', {'id':restored['report']['id'], 'template_id':restored['template']['id'], **restored['options']})
+        self.assertEqual(status, 200, inspection)
+        self.assertEqual(inspection['envelope']['P'], 140)
+
+        self.assertEqual(self.request('POST', '/api/documents/connect', {'project':pid, 'id':raw['id']})[0], 400)
 
     def test_headerless_upload_requires_case_selection_then_calculates(self):
         status, uploaded = self.upload('summary.txt', summary_only().encode())
@@ -244,6 +280,9 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertIn(b'webkitdirectory', html)
         self.assertEqual(self.request('GET', '/app.js')[0], 200)
+        self.assertEqual(self.request('GET', '/pdfjs/pdf.mjs')[0], 200)
+        self.assertEqual(self.request('GET', '/pdfjs/%2e%2e/server.py')[0], 404)
+        self.assertEqual(self.request('GET', '/pdfjs/unlisted.js')[0], 404)
         for name in ('regular', 'medium', 'semibold'):
             status, font = self.request('GET', f'/fonts/plex-{name}.ttf', authenticated=False)
             self.assertEqual(status, 200)

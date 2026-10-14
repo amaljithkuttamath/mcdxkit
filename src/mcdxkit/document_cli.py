@@ -13,10 +13,16 @@ def main(argv=None):
     sub = parser.add_subparsers(dest='action', required=True)
     sub.add_parser('config', help='Show configuration presence, never secrets')
     sub.add_parser('list', help='List saved projects')
-    create = sub.add_parser('create', help='Snapshot raw loads and a compatible template')
-    create.add_argument('report'); create.add_argument('--template', required=True); create.add_argument('--title', required=True)
+    create = sub.add_parser('create', help='Create a document library, optionally with calculation files')
+    create.add_argument('report', nargs='?'); create.add_argument('--template'); create.add_argument('--title', required=True)
     create.add_argument('--cases', nargs='+', type=int); create.add_argument('--input-map', help='JSON object mapping template variables to load components')
     create.add_argument('--load-source', choices=['effects', 'reactions'], default='effects')
+    connect = sub.add_parser('connect', help='Connect calculation files to an existing library without reindexing PDFs')
+    connect.add_argument('project'); connect.add_argument('report'); connect.add_argument('--template', required=True)
+    connect.add_argument('--cases', nargs='+', type=int); connect.add_argument('--input-map')
+    connect.add_argument('--load-source', choices=['effects', 'reactions'], default='effects')
+    ask = sub.add_parser('ask', help='Ask a cited question without a raw report or template')
+    ask.add_argument('project'); ask.add_argument('--question', required=True)
     add = sub.add_parser('add', help='Save original PDFs locally'); add.add_argument('project'); add.add_argument('files', nargs='+')
     for action in ('show', 'ingest', 'status'):
         sub.add_parser(action).add_argument('project')
@@ -35,6 +41,9 @@ def main(argv=None):
             if args.action == 'list': result = flow.listing()
             elif args.action == 'create': result = flow.create(args.title, args.report, args.template, cases=args.cases,
                     input_map=json.loads(args.input_map) if args.input_map else None, load_source=args.load_source)
+            elif args.action == 'connect': result = flow.attach_calculation(args.project, args.report, args.template, cases=args.cases,
+                    input_map=json.loads(args.input_map) if args.input_map else None, load_source=args.load_source)
+            elif args.action == 'ask': result = flow.ask(args.project, args.question)
             elif args.action == 'add':
                 result = []
                 for file in args.files:

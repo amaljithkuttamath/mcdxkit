@@ -1,6 +1,6 @@
-# Source-backed design packages
+# Document library and calculated design packages
 
-Use **Design packages** in the browser, `mcdxkit documents`, or `DocumentWorkflow` in Python. This workflow uses RAGFlow for PDF ingestion/retrieval and a specific OpenRouter `:free` model for cited narrative and scalar input proposals. Existing MCDXKit preflight and CalcpadCE perform all conversions/calculations. Native Mathcad execution is not verified by this workflow.
+Use **Document library** in the browser, `mcdxkit documents`, or `DocumentWorkflow` in Python. This workflow uses RAGFlow for PDF ingestion/retrieval and a specific OpenRouter `:free` model for cited narrative and scalar input proposals. Existing MCDXKit preflight and CalcpadCE perform all conversions/calculations. Native Mathcad execution is not verified by this workflow.
 
 ## Browser
 
@@ -8,10 +8,13 @@ Open **Service settings** to enter the RAGFlow URL/API key, installed embedding 
 
 Browser settings override environment defaults for this workspace and are read by the CLI too. Keys are stored in `output-dir/.documents/.credentials.json` with owner-only permissions on POSIX, never returned by the API, put in browser storage, or included in generated packages. This is a local plaintext credential file, not a secret vault: protect the server account and backups. All authenticated users of this trusted shared workspace can update settings. Use HTTPS in network mode; keep environment/secret-file deployment for centrally managed credentials. Remove the credential file locally to restore environment defaults.
 
-1. In the calculation workspace, select a report, template, cases and load mapping. Choose **Create design package** on that report's Inputs card. Alternatively open **Design packages → New design package** and select the report/template there. Explicit overrides from the conversion screen are not silently imported; use a revised template or review document-backed proposals.
-2. Add source PDFs. Files are stored locally before indexing. Open any source to inspect its original PDF. Each source has a content hash; identical bytes are deduplicated even if filenames differ. Different revisions are retained as separate sources, not silently superseded. Select the applicable revisions for a new project; there is no automatic precedence adjudication.
-3. **Index sources** submits PDFs to the configured RAGFlow instance. **Refresh status** reports its actual processing state. All sources must be indexed before drafting. No estimated completion percentages are invented.
-4. Describe the design basis to prepare, then **Create cited draft**. This sends bounded retrieved excerpts, project title, request and template scalar definitions to OpenRouter. It does not send the entire PDFs or raw load report to OpenRouter. RAGFlow receives the full PDFs. Only a specifically configured `provider/model:free` is accepted; random routers and paid-model fallback are disabled. Provider training is denied in the request; requests may fail if no eligible free provider exists. Retention policies remain provider-specific.
+1. Open **Documents → Create library** and enter a project title. No report or template is required. You can also start from the calculation workspace's **Create design package** action with its already selected files/cases/mapping.
+2. Add source PDFs. Files are stored locally before indexing. Open any source to inspect its original PDF. Identical bytes are deduplicated; different revisions remain separate sources. There is no automatic revision precedence decision.
+3. **Index sources**, then **Refresh status**. All sources must finish indexing before asking or drafting. **Ask with citations** answers your question, saves its evidence snapshot, and links to original pages. Earlier answers remain available in **Saved answers**, including after adding documents or connecting calculation files. They are historical answers, not automatically refreshed conclusions.
+4. When ready, **Connect calculation files** to the same library: choose the raw report, template, cases and optional explicit input map. Preflight validates the stored snapshots. Existing PDFs, index IDs and answers remain intact; no reindex is needed for this connection. A connected calculation cannot be replaced in place; use another project for different calculation files. Use **Open calculation workflow** to inspect the connected inputs/template in the existing Files → Inputs → Changes → Outputs interface; the project link returns to the same notebook. Then **Create cited draft** prepares the design basis and proposes only unmapped scalar inputs. Asking the library remains available independently.
+
+Asking sends retrieved excerpts, project title and your question to OpenRouter. Design drafting additionally sends template scalar definitions and the selected load summary (units, case/pile provenance and source hashes). It does not send the entire PDFs or raw report to OpenRouter. RAGFlow receives full PDFs. Only a configured `provider/model:free` is accepted; paid/random fallback is disabled. Provider training is denied in the request, but retention policies remain provider-specific. Missing supporting evidence is an error or explicit gap, not permission to invent an answer.
+
 5. Read the draft and original cited pages. Check applicable editions, units, exceptions and scope. Accept only the proposed inputs that apply. Unchecked suggestions are not applied. Save reviewer and review note, including unresolved information. This records design-basis acceptance, not professional certification.
 6. **Calculate & create package** executes the reviewed inputs through the existing engine. Read the report or download the ZIP. A completed calculation can contain failing design checks; completion is not a claim of safety.
 
@@ -23,12 +26,16 @@ Configure services following [local deployment](../deploy/ragflow.md). The CLI a
 
 ```bash
 mcdxkit documents config
-mcdxkit documents --workspace ./results/.documents create loads.gp11t \
-  --template design.mcdx --title 'Foundation design basis' --cases 1 7
+mcdxkit documents --workspace ./results/.documents create --title 'Bridge project library'
 # Use the returned project ID below.
 mcdxkit documents --workspace ./results/.documents add PROJECT specification.pdf drawings.pdf
 mcdxkit documents --workspace ./results/.documents ingest PROJECT
 mcdxkit documents --workspace ./results/.documents status PROJECT
+mcdxkit documents --workspace ./results/.documents ask PROJECT \
+  --question 'What must the foundation design report include?'
+# Later, connect calculation files without losing your PDFs or answers.
+mcdxkit documents --workspace ./results/.documents connect PROJECT loads.gp11t \
+  --template design.mcdx --cases 1 7
 mcdxkit documents --workspace ./results/.documents draft PROJECT \
   --request 'Identify applicable material requirements and assumptions for this template.'
 mcdxkit documents --workspace ./results/.documents show PROJECT
@@ -46,16 +53,24 @@ Commands print JSON; errors exit 2. `build` prints the package path. `create --i
 ```python
 from mcdxkit.documents import DocumentWorkflow
 workflow = DocumentWorkflow('results/.documents')
-project = workflow.create('Design basis', 'loads.txt', 'template.mcdx', cases=[1, 7])
-# add_source, ingest, status, draft, review and build use the same contracts as the CLI.
+project = workflow.create('Bridge project library')
+# add_source, ingest, status and ask work without calculation files.
+# Later: workflow.attach_calculation(project['id'], 'loads.txt', 'template.mcdx', cases=[1, 7])
+# draft, review and build then use the connected calculation.
 ```
 
 `document_clients.py` owns bounded HTTP adapters and secret configuration. `documents.py` owns immutable source snapshots, SQLite project state, structured draft validation, review and package assembly. `document_cli.py` and the HTTP/browser adapters share it. The calculation engine imports neither model client nor authoring service. RAGFlow owns OCR, chunks and retrieval; we do not recreate them. No LangChain or Deep Agents runtime is needed for the fixed workflow.
 
 SQLite serializes mutations across CLI/server processes. This remains a single trusted-team workspace, not tenant-isolated hosting. Back up the whole document directory plus RAGFlow's deployment configuration and persistent volumes. Never commit these directories. Changed source bytes block generation; adding a source invalidates older draft reviews. Existing package exports remain immutable and independently inspectable. A new draft is a new record; review changes never rewrite an already-issued package.
 
-Limits: 100 PDFs / 2 GiB per project; 256 MiB per PDF; 100 drafts and 100 packages; 12 retrieved passages of at most 6,000 characters per draft. Large files must be split into labelled parts. Citation validation establishes source identity, not factual entailment or engineering correctness. PDF page positions are shown only when the parser supplies them. Formula authoring, automatic code-edition resolution, unrestricted agents, native Prime execution, automatic retries and offline LLM drafting are not implemented. Existing calculation and stored-source/package inspection remain local/offline; this drafting adapter requires OpenRouter network access.
+Limits: 100 PDFs / 2 GiB per project; 256 MiB per PDF; 100 answers, 100 drafts and 100 packages; 12 retrieved passages of at most 6,000 characters per draft. Large files must be split into labelled parts. Citation validation establishes source identity, not factual entailment or engineering correctness. PDF page positions are shown only when the parser supplies them. Formula authoring, automatic code-edition resolution, unrestricted agents, native Prime execution, automatic retries and offline LLM drafting are not implemented. Existing calculation and stored-source/package inspection remain local/offline; this drafting adapter requires OpenRouter network access.
 
 ## Validation
 
 Synthetic lifecycle tests execute the real calculator. Protocol tests exercise real HTTP against controlled RAGFlow/OpenRouter response fixtures, including HTTP-success business failures, redirect refusal and rate limits. These are separate from live-service evaluation. Before operational use, run the pilot PDFs against a configured RAGFlow instance and chosen free model; verify citations, redline revisions, qualified values, missing evidence and drawing/table extraction. A passing mock/protocol test is not evidence of parser/model quality.
+
+### Choosing a model in the browser
+
+Open **Connect services**, paste an OpenRouter API key, and leave the field. The server loads the account-filtered model catalog from OpenRouter and offers every compatible free text model with zero reported pricing. Select a model and save. Reopening settings with a saved key refreshes the list; **Refresh models** retries failed or empty results. Discovery does not generate text, send project documents, or save a newly entered key. Saving settings is explicit. Keys never appear in the response, browser storage, or exported files.
+
+The catalog follows [OpenRouter account preferences](https://openrouter.ai/docs/api/api-reference/models/list-models-filtered-by-user-provider-preferences-privacy-settings-and-guardrails). A listed model is not a guarantee of capacity, structured-answer quality, or availability under the drafting request's no-data-collection policy. Requests can still be refused or rate-limited; no paid fallback is enabled.
