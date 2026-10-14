@@ -1,13 +1,13 @@
 // Real document UI orchestration with a small DOM boundary; layout is browser-tested.
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 function harness(){
- const controls=[],nodes=new Map();let resolveFetch;
+ const controls=[],nodes=new Map(),timers=new Map();let resolveFetch,nextTimer=0;
  function element(tag='div') {const e={tagName:tag,hidden:false,disabled:false,isConnected:true,value:'',dataset:{},children:[],classList:{add(){},remove(){},toggle(){}},setAttribute(){},addEventListener(){},append(...kids){this.children.push(...kids);},replaceChildren(...kids){this.children=kids;},querySelector(){return null;},close(){},scrollIntoView(){}};if(['button','input','select','textarea'].includes(tag))controls.push(e);return e;}
  const html=fs.readFileSync('src/mcdxkit/web/documents.html','utf8');for(const match of html.matchAll(/<(\w+)[^>]*\bid="([^"]+)"/g))nodes.set(match[2],element(match[1]));
  nodes.get('pdfs').previousElementSibling=element('label');
- const context=vm.createContext({document:{getElementById:id=>nodes.get(id),createElement:element,querySelector:()=>null,querySelectorAll:selector=>selector==='button,input,select,textarea'?controls:[]},fetch:()=>new Promise(resolve=>{resolveFetch=resolve;}),Option:function(text,value){return {text,value};},URLSearchParams,setTimeout,location:{search:''}});
+ const context=vm.createContext({document:{getElementById:id=>nodes.get(id),createElement:element,querySelector:()=>null,querySelectorAll:selector=>selector==='button,input,select,textarea'?controls:[]},fetch:()=>new Promise(resolve=>{resolveFetch=resolve;}),Option:function(text,value){return {text,value};},URLSearchParams,setTimeout:fn=>{timers.set(++nextTimer,fn);return nextTimer;},clearTimeout:id=>timers.delete(id),location:{search:''}});
  vm.runInContext(fs.readFileSync('src/mcdxkit/web/documents.js','utf8'),context);
- return {context,nodes,element,finish:(body)=>resolveFetch({ok:!!body,json:async()=>body})};
+ return {context,nodes,element,timers,tick:async()=>{const [id,fn]=timers.entries().next().value;timers.delete(id);await fn();},finish:(body)=>resolveFetch({ok:!!body,json:async()=>body})};
 }
 test('controls created while a request is running remain disabled until completion',async()=>{
  const {context,finish}=harness();
@@ -62,4 +62,39 @@ test('tested defaults are offered for new settings without replacing existing se
  loading=vm.runInContext('loadModels()',context);finish(catalog);await loading;
  assert.notEqual(nodes.get('router-model').value,'tested/answer:free');
  assert.notEqual(nodes.get('router-embedding').value,'tested/search:free');
+});
+
+async function indexingHarness(){
+ const h=harness();h.finish();await new Promise(resolve=>setImmediate(resolve));
+ vm.runInContext("project={id:'library',revision:1,sources:[{id:'pdf',name:'Plans.pdf',status:'parsing',progress:0}],drafts:[],runs:[]}; connections={ragflow_configured:true,openrouter_configured:true}; reviewDirty=true;",h.context);
+ h.nodes.get('question').value='Keep my question';
+ return h;
+}
+test('index progress refreshes without replacing unsaved work, and stops when complete',async()=>{
+ const h=await indexingHarness();
+ vm.runInContext('scheduleIndexStatus()',h.context);
+ assert.equal(h.timers.size,1);
+ const pending=h.tick();
+ h.finish({id:'library',revision:1,sources:[{id:'pdf',status:'ready',progress:1}]});await pending;
+ assert.equal(h.nodes.get('ask').disabled,false);
+ assert.equal(h.nodes.get('question').value,'Keep my question');
+ assert.equal(vm.runInContext('reviewDirty',h.context),true);
+ assert.equal(h.timers.size,0);
+ assert.match(h.nodes.get('source-count').textContent,/1 indexed/);
+});
+test('late progress from another project cannot replace the current project',async()=>{
+ const h=await indexingHarness();vm.runInContext('scheduleIndexStatus()',h.context);
+ const pending=h.tick();
+ vm.runInContext("project={id:'other',revision:2,sources:[],drafts:[],runs:[]}",h.context);
+ h.finish({id:'library',revision:1,sources:[{id:'pdf',status:'ready',progress:1}]});await pending;
+ assert.equal(vm.runInContext('project.id',h.context),'other');
+ assert.equal(vm.runInContext('project.sources.length',h.context),0);
+});
+test('status polling defers during actions and stops after a network error',async()=>{
+ const h=await indexingHarness();vm.runInContext('busy=true;scheduleIndexStatus()',h.context);
+ await h.tick();assert.equal(h.timers.size,1);
+ vm.runInContext('busy=false',h.context);const pending=h.tick();h.finish();await pending;
+ assert.equal(h.timers.size,0);
+ assert.match(h.nodes.get('notice').textContent,/Refresh status/);
+ assert.equal(vm.runInContext('project.sources[0].status',h.context),'parsing');
 });

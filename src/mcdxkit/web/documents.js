@@ -3,6 +3,7 @@ const $=id=>document.getElementById(id);
 const element=(tag,value,cls)=>{const e=document.createElement(tag);if(value!==undefined)e.textContent=value;if(cls)e.className=cls;return e;};
 let connections=null,controlState=null,serviceReady=null;
 let token='',project=null,busy=false,pdfBlob=null,pdfDocument=null,pdfPage=1,reviewDirty=false;
+let indexStatusTimer=null,indexStatusPending=false;
 async function api(path,data){const options={headers:{'X-MCDXKit-Token':token}};if(data!==undefined){options.method='POST';options.headers['Content-Type']='application/json';options.body=JSON.stringify(data);}const r=await fetch(path,options);const body=await r.json();if(!r.ok)throw new Error(body.error||'Request failed.');return body;}
 function notify(message,error=false){$('notice').textContent=message;$('notice').className=error?'error':'';const opened=document.querySelector('dialog[open]');if(opened){let status=opened.querySelector('.dialog-notice');if(!status){status=element('p',undefined,'dialog-notice');status.setAttribute('role','status');opened.querySelector('.dialog-heading').after(status);}status.textContent=message;status.className='dialog-notice '+(error?'settings-error':'muted');}}
 function openDialog(id){const dialog=$(id);dialog.querySelector('.dialog-notice')?.remove();dialog.showModal();}
@@ -98,9 +99,40 @@ $('source-download').onclick=()=>{if(pdfBlob)save(pdfBlob,$('source-title').text
 async function artifact(run,name){const r=await fetch(`/api/documents/${project.id}/runs/${run.id}/${name}`,{headers:{'X-MCDXKit-Token':token}});if(!r.ok)throw new Error((await r.json()).error);return r;}
 function render(){
  $('title').textContent=project.title;$('revision').textContent='Project revision '+project.revision;$('project-controls').hidden=false;$('question-composer').hidden=false;for(const view of ['answers','source','draft','packages'])$(view+'-view').hidden=false;$('pdf-canvas-wrap').hidden=!pdfDocument;document.querySelector('.pdf-toolbar').hidden=!pdfDocument;$('nav-documents').href='/documents?project='+project.id;$('nav-calculations').href='/?library='+project.id;$('calculation-workspace').href='/?library='+project.id;$('rail-empty').hidden=true;$('create-dialog').close();$('connect-dialog').close();$('project-context').textContent=project.report_sha256?'Library + calculation':'Document library';$('library-welcome').hidden=true;$('answer-workspace').hidden=false;const linked=Boolean(project.report_sha256);$('design-request').hidden=!linked;$('open-connect').hidden=linked;$('calculation-status').textContent=linked?`${project.report_name||'Load report'} · ${project.template_name||'Mathcad template'} · Cases ${project.options.cases.join(', ')}`:'Optional · connect when ready';const latest=project.drafts.at(-1);$('workflow-status').textContent=project.runs.length?'Package available':latest?.review?'Reviewed':latest?'Review required':project.sources.length?(project.sources.every(s=>s.status==='ready')?'Ready for questions':'Index project sources'):'Add project sources';
- const sources=$('sources');sources.replaceChildren();for(const s of project.sources){const row=element('div',undefined,'source-row');row.dataset.sourceId=s.id;row.append(action(s.name,()=>run('Opening source…',()=>openPDF(s.id,s.name))),element('small',s.status==='ready'?'Indexed':s.status==='uploaded'?'Saved · not indexed':s.status==='failed'?'Indexing failed · retry available':'Indexing'));if(s.status==='parsing'){const p=element('progress');p.max=1;if(s.progress>0)p.value=s.progress;p.setAttribute('aria-label','Indexing '+s.name);row.append(p);}sources.append(row);}
- filterSources();renderAnswers();renderDraft(project.drafts.at(-1));renderPackages();lockControls();
+ const sources=$('sources');sources.replaceChildren();for(const s of project.sources){const row=element('div',undefined,'source-row');row.dataset.sourceId=s.id;row.append(action(s.name,()=>run('Opening source…',()=>openPDF(s.id,s.name))),element('small',sourceStatusLabel(s)));if(s.status==='parsing'){const p=element('progress');p.max=1;if(s.progress>0)p.value=s.progress;p.setAttribute('aria-label','Indexing '+s.name);row.append(p);}sources.append(row);}
+ filterSources();renderAnswers();renderDraft(project.drafts.at(-1));renderPackages();lockControls();scheduleIndexStatus();
 }
+function scheduleIndexStatus(){
+ clearTimeout(indexStatusTimer);indexStatusTimer=null;
+ if(project?.sources.some(s=>s.status==='parsing'))indexStatusTimer=setTimeout(refreshIndexStatus,5000);
+}
+async function refreshIndexStatus(){
+ indexStatusTimer=null;
+ if(busy||document.hidden||indexStatusPending){scheduleIndexStatus();return;}
+ const id=project?.id,revision=project?.revision;
+ if(!id)return;
+ indexStatusPending=true;
+ try{
+  const latest=await api('/api/documents/status',{project:id});
+  if(!busy&&project?.id===id&&project.revision===revision&&latest.revision===revision){
+   const statuses=new Map(latest.sources.map(s=>[s.id,s]));
+   for(const source of project.sources){const current=statuses.get(source.id);if(current){source.status=current.status;source.progress=current.progress;}}
+   // Only update status nodes. Keep the open PDF, question and unsaved review untouched.
+   for(const row of document.querySelectorAll('.source-row')){
+    const source=project.sources.find(s=>s.id===row.dataset.sourceId);if(!source)continue;
+    row.querySelector('small').textContent=sourceStatusLabel(source);
+    const progress=row.querySelector('progress');if(progress){if(source.status!=='parsing')progress.remove();else if(source.progress>0)progress.value=source.progress;else progress.removeAttribute('value');}
+   }
+   filterSources();updateReadiness();
+   if(!project.runs.length&&!project.drafts.length)$('workflow-status').textContent=project.sources.every(s=>s.status==='ready')?'Ready for questions':'Index project sources';
+  }
+  scheduleIndexStatus();
+ }catch(error){
+  if(project?.id===id)notify('Indexing status could not refresh. Use Refresh status to retry. '+error.message,true);
+  else scheduleIndexStatus();
+ }finally{indexStatusPending=false;}
+}
+function sourceStatusLabel(source){return source.status==='ready'?'Indexed':source.status==='uploaded'?'Saved · not indexed':source.status==='failed'?'Indexing stopped or failed · retry available':source.progress>0?`Indexing · ${Math.floor(source.progress*100)}%`:'Waiting for parser';}
 function filterSources(){const query=$('source-search').value.toLowerCase();let count=0;document.querySelectorAll('.source-row').forEach(row=>{row.hidden=!row.textContent.toLowerCase().includes(query);if(!row.hidden)count++;});$('source-count').textContent=`${count} of ${project.sources.length} documents · ${project.sources.filter(s=>s.status==='ready').length} indexed`;}
 $('source-search').oninput=filterSources;
 function renderAnswers(){
@@ -150,7 +182,7 @@ $('projects').onchange=()=>{if($('projects').value)run('Loading project…',()=>
 $('create-form').onsubmit=e=>{e.preventDefault();run('Creating document library…',async()=>{const library=await api('/api/documents/create',{title:$('project-title').value});await select(library.id);tab('answers');notify('Library created. Add PDFs to begin.');});};
 $('connect-form').onsubmit=e=>{e.preventDefault();run('Checking loads and template…',async()=>{async function upload(file,kind){const r=await fetch('/api/upload?'+new URLSearchParams({name:file.name,kind}),{method:'POST',headers:{'X-MCDXKit-Token':token,'Content-Type':'application/octet-stream'},body:file});const body=await r.json();if(!r.ok)throw new Error(body.error);return body;}const raw=await upload($('raw-file').files[0],'report');const template=await upload($('template-file').files[0],'template');const value=$('cases').value.trim(),map=$('input-map').value.trim();project=await api('/api/documents/connect',{project:project.id,id:raw.id,template_id:template.id,cases:value?value.split(/[\s,]+/).map(Number):null,input_map:map?JSON.parse(map):null,load_source:$('basis').value});await select(project.id);tab('draft');notify('Calculation files connected. Your PDFs and saved answers are preserved.');});};
 $('pdfs').onchange=()=>run('Saving original PDFs…',async()=>{for(const file of $('pdfs').files){const r=await fetch('/api/documents/upload?'+new URLSearchParams({project:project.id,name:file.name}),{method:'POST',headers:{'X-MCDXKit-Token':token,'Content-Type':'application/octet-stream'},body:file});if(!r.ok)throw new Error((await r.json()).error);}await select(project.id);$('pdfs').value='';notify('Original PDFs saved. Index them to enable retrieval.');});
-$('ingest').onclick=()=>run('Submitting sources to RAGFlow…',async()=>{project=await api('/api/documents/ingest',{project:project.id});render();notify('Indexing requested. Refresh status to see actual parser progress.');});
+$('ingest').onclick=()=>run('Submitting sources to RAGFlow…',async()=>{project=await api('/api/documents/ingest',{project:project.id});render();notify('Indexing requested. Progress updates automatically while this page is open.');});
 $('refresh-status').onclick=()=>run('Checking RAGFlow indexing status…',async()=>{project=await api('/api/documents/status',{project:project.id});render();notify(project.sources.every(s=>s.status==='ready')?'Sources indexed. Ready for questions.':'Some sources are not ready. Review their status.');});
 $('draft').onclick=()=>run('Retrieving evidence and drafting with OpenRouter…',async()=>{await api('/api/documents/draft',{project:project.id,request:$('request').value});await select(project.id);tab('draft');notify('Draft created. Inspect citations and review the proposed inputs.');});
 $('ask').onclick=()=>run('Retrieving evidence and answering with citations…',async()=>{const answer=await api('/api/documents/ask',{project:project.id,question:$('question').value});await select(project.id);$('answer-history').value=answer.id;showAnswer();tab('answers');notify('Answer saved. Follow citations to verify the original pages.');});
