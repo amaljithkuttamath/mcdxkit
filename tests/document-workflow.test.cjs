@@ -45,3 +45,21 @@ test('discovery preserves a valid model selection and offers retry after a failu
  assert.match(nodes.get('model-status').textContent,/Retry with Refresh models/);
  assert.equal(nodes.get('router-model').children.length,2);
 });
+
+test('tested defaults are offered for new settings without replacing existing selections',async()=>{
+ const {context,nodes,finish}=harness();finish();await new Promise(resolve=>setImmediate(resolve));
+ const catalog={models:[{id:'tested/answer:free',name:'Answer',recommendation:'Default · tested 2026-10-14'},{id:'chosen/answer:free',name:'Chosen'}],embedding_models:[{id:'tested/search:free',name:'Search',recommendation:'Default · tested 2026-10-14'},{id:'chosen/search:free',name:'Chosen'}]};
+ let loading=vm.runInContext('loadModels()',context);finish(catalog);await loading;
+ assert.equal(nodes.get('router-model').value,'tested/answer:free');
+ assert.equal(nodes.get('router-embedding').value,'tested/search:free');
+ assert.match(nodes.get('router-model').children[1].text,/tested 2026-10-14/);
+ nodes.get('router-model').value='chosen/answer:free';nodes.get('router-embedding').value='chosen/search:free';
+ loading=vm.runInContext('loadModels()',context);finish(catalog);await loading;
+ assert.equal(nodes.get('router-model').value,'chosen/answer:free');
+ assert.equal(nodes.get('router-embedding').value,'chosen/search:free');
+ // A disappearing provider never silently changes an existing model/index.
+ nodes.get('router-model').value='unavailable/answer:free';nodes.get('router-embedding').value='unavailable/search:free';
+ loading=vm.runInContext('loadModels()',context);finish(catalog);await loading;
+ assert.notEqual(nodes.get('router-model').value,'tested/answer:free');
+ assert.notEqual(nodes.get('router-embedding').value,'tested/search:free');
+});

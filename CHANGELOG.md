@@ -4,6 +4,12 @@ User-visible changes to MCDXKit (formerly gdcalc). The format follows [Keep a Ch
 
 ## Unreleased
 
+- Read current RAGFlow ingestion states, requiring completed tasks with nonempty chunks before enabling answers. Bound the local Elasticsearch heap so PDF parsing can share an 8 GiB Docker VM.
+
+- Prefer free document models based on recorded synthetic tests: Cohere for answers, with two Nemotron search recommendations. Preserve existing selections and indexes; distinguish direct model tests from RAGFlow execution.
+
+- Read local `.env` document-service settings through python-dotenv, preserving process and browser overrides and keeping credentials out of Git/exports.
+
 - Use one OpenRouter key for free search embeddings and answers through RAGFlow’s native adapter; provision the bundled local service account and preserve existing index models. No Ollama runtime is required.
 
 - Detect document-service health, local runtime state and the configured default search model; reserve infrastructure fields for advanced administration.

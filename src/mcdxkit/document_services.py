@@ -84,8 +84,8 @@ def discover(root):
         if not config.url: changes['url'] = url; changes['rag_key'] = config.rag_key
         if not config.embedding: changes['embedding'] = embedding
         if changes: result['configuration'] = save_configuration(root, changes)
-        result['service'] = {'state': 'ready', 'title': 'Document search ready',
-            'message': 'Service connection and default search model detected automatically. You can index your project documents.'}
+        result['service'] = {'state': 'ready', 'title': 'Document service connected',
+            'message': 'Service connection and selected search model detected. Indexing verifies whether this model works through the document service.'}
     except ValueError as error:
         result['service'] = {'state': 'connection_error', 'title': 'Document service needs attention', 'message': str(error)}
     return result

@@ -24,6 +24,12 @@ def private_config(upstream):
         config['name'] = 'mcdxkit-ragflow_' + name
     for name, config in value.get('networks', {}).items():
         config['name'] = 'mcdxkit-ragflow_' + name
+    # Upstream gives Elasticsearch almost the whole 8 GiB Docker VM; JVM automatic
+    # sizing then starves the parser and databases during real PDF ingestion.
+    if 'es01' in value['services']:
+        search = value['services']['es01']
+        search.setdefault('environment', {})['ES_JAVA_OPTS'] = '-Xms1g -Xmx1g'
+        search['mem_limit'] = 2 * 1024**3
     api = value['services']['ragflow-cpu']
     api['ports'] = [{'target': port, 'published': str(host), 'host_ip': '127.0.0.1', 'protocol': 'tcp'}
                     for host, port in ((8081, 80), (9380, 9380), (9381, 9381))]

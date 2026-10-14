@@ -1,5 +1,7 @@
 # Document library and calculated design packages
 
+Free answer/search preferences are based on the [recorded synthetic model evaluation](model-evaluation.md). Cohere North Mini Code is the default answer model. Refreshing the catalog keeps existing selections and shows tested recommendations only while they remain listed and free. RAGFlow indexing remains separately validated; direct embedding success is not an end-to-end search pass.
+
 Use **Document library** in the browser, `mcdxkit documents`, or `DocumentWorkflow` in Python. This workflow uses RAGFlow for PDF ingestion/retrieval and a specific OpenRouter `:free` model for cited narrative and scalar input proposals. Existing MCDXKit preflight and CalcpadCE perform all conversions/calculations. Native Mathcad execution is not verified by this workflow.
 
 ## Browser
@@ -82,3 +84,9 @@ The catalog follows [OpenRouter account preferences](https://openrouter.ai/docs/
 The browser also lists free text-embedding models from OpenRouter's separate `/embeddings/models` catalog. Choose a search model and an answer model, then save. For the prepared local bundle, MCDXKit provisions its internal RAGFlow account and registers the search model with RAGFlow's existing OpenRouter driver. It does not install Ollama or download local model weights. Original PDFs stay in the project and RAGFlow; indexing sends extracted text to OpenRouter for embeddings. Embeddings follow the account/provider privacy policy, whereas drafting also requests `data_collection: deny`. Hosted search and answers require network access. Catalog discovery is not an execution test.
 
 Existing embedding models are never silently replaced: changing vector models requires a new workspace. A missing/invalid key, absent free models or service errors leave setup incomplete, with no paid fallback. Advanced fields support separately managed deployments. See [deployment setup](../deploy/ragflow.md).
+
+### Local `.env` configuration
+
+Create `.env` in the directory where you launch MCDXKit (copy `.env.example` or `deploy/documents.env.example`) and add `OPENROUTER_API_KEY=your-key`. Document settings are read by the CLI, SDK and server without executing the file, expanding variables or searching parent directories. Existing browser-saved settings take precedence over exported process environment, which takes precedence over `.env`. Blank password fields continue to preserve saved keys. Editing `.env` does not replace a key already saved through the browser; update that key in the browser when needed. Dotenv values never mutate the process environment, so unrelated server/network options are unaffected.
+
+`OPENROUTER_API_KEY_FILE` and `MCDXKIT_RAGFLOW_API_KEY_FILE` can point at private files instead. An explicitly exported key or `_FILE` takes priority over either dotenv form; within one source `_FILE` wins. Keep `.env` private; only empty examples belong in Git. The app re-reads document configuration on the next operation, so dotenv edits do not require restarting an already updated server.

@@ -18,3 +18,12 @@ class SetupTests(unittest.TestCase):
         self.assertTrue(all(p['host_ip'] == '127.0.0.1' for p in value['services']['ragflow-cpu']['ports']))
         self.assertNotIn('profiles', value['services']['ragflow-cpu'])
         self.assertEqual(value['volumes']['database']['name'], 'mcdxkit-ragflow_database')
+
+    def test_local_search_heap_leaves_memory_for_the_parser_and_database(self):
+        module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
+        source = {'services': {'ragflow-cpu': {'networks':{}}, 'es01': {'environment':{'ELASTIC_PASSWORD':'synthetic'},'mem_limit':8073741824}}, 'networks':{}}
+        value = module.private_config(source)
+        self.assertEqual(value['services']['es01']['environment']['ES_JAVA_OPTS'], '-Xms1g -Xmx1g')
+        self.assertEqual(value['services']['es01']['mem_limit'], 2 * 1024**3)
+        self.assertEqual(value['services']['es01']['environment']['ELASTIC_PASSWORD'], 'synthetic')
+        self.assertNotIn('ES_JAVA_OPTS', source['services']['es01']['environment'])

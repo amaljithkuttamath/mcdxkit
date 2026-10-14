@@ -250,11 +250,14 @@ class DocumentWorkflow:
                     if not doc:
                         source['status'] = 'failed'; source['progress'] = 0
                     if doc:
-                        run = str(doc.get('run', '')).upper()
+                        # Current RAGFlow exposes task state separately from document validity.
+                        # Its `status: "1"` means a valid document, not completed ingestion.
+                        run = str(doc.get('ingestion_status') or doc.get('run', '')).upper()
                         progress = doc.get('progress', 0)
                         source['progress'] = max(0, min(1, progress)) if type(progress) in (int, float) and math.isfinite(progress) else 0
-                        source['status'] = ('ready' if run in ('DONE', '3') and doc.get('chunk_count', 0) > 0
-                                            else 'failed' if run in ('FAIL', 'FAILED', '4', 'CANCEL', '2', 'DONE', '3') else 'parsing')
+                        chunks = doc.get('chunk_count', 0)
+                        source['status'] = ('ready' if run in ('DONE', '3', 'COMPLETED') and type(chunks) is int and chunks > 0
+                                            else 'failed' if run in ('FAIL', 'FAILED', '4', 'CANCEL', '2', 'DONE', '3', 'COMPLETED', 'STOPPED') else 'parsing')
         return self.get(pid)
 
     def ask(self, pid, question, client=None, writer=None):

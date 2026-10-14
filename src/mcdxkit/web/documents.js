@@ -33,15 +33,16 @@ async function fetchModels(){
   try{
    const result=await api('/api/documents/models',{router_key:$('router-key').value.trim()});
    $('router-model').replaceChildren(new Option(result.models.length?'Choose a model':'No supported free models available',''));
-   for(const model of result.models)$('router-model').append(new Option(model.name+' · '+model.id,model.id));
+   for(const model of result.models)$('router-model').append(new Option(model.name+' · '+(model.recommendation?model.recommendation+' · ':'')+model.id,model.id));
    if(result.models.some(m=>m.id===selected))$('router-model').value=selected;
+   else if(!selected&&!connections?.model)$('router-model').value=result.models.find(m=>m.recommendation)?.id||'';
    $('model-status').textContent=result.models.length?`${result.models.length} free text models available for this key. Choose one, then save settings. Availability and rate limits can change.`:'Key accepted, but this account has no compatible free text models. Check provider/privacy settings or refresh later.';
    const embeddings=result.embedding_models||[];
    $('router-embedding').replaceChildren(new Option(embeddings.length?'Choose a search model':'No supported free search models available',''));
-   for(const model of embeddings)$('router-embedding').append(new Option(model.name+' · '+model.id,model.id));
+   for(const model of embeddings)$('router-embedding').append(new Option(model.name+' · '+(model.recommendation?model.recommendation+' · ':'')+model.id,model.id));
    if(embeddings.some(m=>m.id===selectedSearch))$('router-embedding').value=selectedSearch;
-   else if(!connections?.embedding&&embeddings.length)$('router-embedding').value=[...embeddings].sort((a,b)=>(b.context_length||0)-(a.context_length||0))[0].id;
-   $('model-status').textContent+=` ${embeddings.length} free search models listed; connection is verified when indexing.`;
+   else if(!selectedSearch&&!connections?.embedding&&embeddings.length)$('router-embedding').value=embeddings.find(m=>m.recommendation)?.id||[...embeddings].sort((a,b)=>(b.context_length||0)-(a.context_length||0))[0].id;
+   $('model-status').textContent+=` ${embeddings.length} free search models listed. Recommendations reflect synthetic model tests; document indexing is verified separately.`;
    notify('Model list updated.');
   }catch(error){$('model-status').textContent=error.message+' Model list was not updated. Retry with Refresh models.';throw error;}
 }

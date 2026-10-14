@@ -19,6 +19,8 @@ from mcdxkit.server import create_server
 
 class ServerTests(unittest.TestCase):
     def setUp(self):
+        config = mock.patch('mcdxkit.document_clients.local_environment', return_value={})
+        config.start(); self.addCleanup(config.stop)
         self.folder = tempfile.TemporaryDirectory()
         self.root = Path(self.folder.name)
         self.template = self.root / 'reference.mcdx'

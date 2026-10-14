@@ -14,6 +14,10 @@ def model(identifier='example/model:free', **changes):
 
 
 class ModelDiscoveryTests(unittest.TestCase):
+    def setUp(self):
+        config = patch('mcdxkit.document_clients.local_environment', return_value={})
+        config.start(); self.addCleanup(config.stop)
+
     def test_authenticated_catalog_filters_and_sorts_without_saving_new_key(self):
         with tempfile.TemporaryDirectory() as folder, patch.dict('os.environ', {}, clear=True):
             config = ModelConfig.for_workspace(folder)
@@ -57,3 +61,26 @@ class ModelDiscoveryTests(unittest.TestCase):
         self.assertEqual([item['id'] for item in result['models']], ['embed/free:free'])
         request.assert_called_once_with('GET', '/embeddings/models')
         self.assertNotIn('private-key', json.dumps(result))
+
+    def test_recommendations_are_offered_only_when_catalog_still_contains_free_model(self):
+        config = ModelConfig('', '', '', 'key', '')
+        with patch.object(HTTPClient, 'request', return_value={'data':[
+                model('a/unrated:free'),model('cohere/north-mini-code:free')]}):
+            found=config.available_models()['models']
+        self.assertEqual(found[0]['id'],'cohere/north-mini-code:free')
+        self.assertEqual(found[0]['recommendation'],'Default · tested 2026-10-14')
+        with patch.object(HTTPClient, 'request', return_value={'data':[
+                model('cohere/north-mini-code:free',pricing={'prompt':'1','completion':'0'})]}):
+            self.assertEqual(config.available_models()['models'],[])
+        with patch.object(HTTPClient, 'request', return_value={'data':[]}):
+            self.assertEqual(config.available_models()['models'],[])
+
+    def test_search_preferences_do_not_claim_ragflow_execution(self):
+        config = ModelConfig('', '', '', 'key', '')
+        ids = ['nvidia/nemotron-3-embed-1b:free', 'nvidia/llama-nemotron-embed-vl-1b-v2:free']
+        rows = [model(i, architecture={'input_modalities':['text'], 'output_modalities':['embeddings']}) for i in ids]
+        with patch.object(HTTPClient, 'request', return_value={'data':rows}):
+            found = config.available_embeddings()['models']
+        self.assertEqual([m['id'] for m in found], list(reversed(ids)))
+        self.assertIn('Alternative', found[1]['recommendation'])
+        self.assertIn('RAGFlow indexing unverified', found[0]['evaluation_scope'])

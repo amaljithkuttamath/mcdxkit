@@ -9,6 +9,8 @@ from test_pipeline import report, template
 
 class DocumentTests(unittest.TestCase):
     def setUp(self):
+        config = patch('mcdxkit.document_clients.local_environment', return_value={})
+        config.start(); self.addCleanup(config.stop)
         from mcdxkit.documents import DocumentWorkflow
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
@@ -177,6 +179,23 @@ class BrowserAssetTests(unittest.TestCase):
 
 
 class AdditionalBoundaryTests(DocumentTests):
+    def test_current_ingestion_states_and_legacy_run_require_completed_nonempty_chunks(self):
+        self.evidence_draft()
+        rows = [({'ingestion_status':'COMPLETED','chunk_count':2}, 'ready'),
+                ({'ingestion_status':'COMPLETED','chunk_count':0}, 'failed'),
+                ({'ingestion_status':'COMPLETED','chunk_count':'2'}, 'failed'),
+                ({'ingestion_status':'FAILED','chunk_count':2}, 'failed'),
+                ({'ingestion_status':'STOPPED','chunk_count':2}, 'failed'),
+                ({'ingestion_status':'RUNNING','progress':1,'chunk_count':2}, 'parsing'),
+                ({'ingestion_status':'UNKNOWN','run':'DONE','chunk_count':2}, 'parsing'),
+                ({'run':'DONE','chunk_count':2}, 'ready')]
+        for fields, expected in rows:
+            class Status:
+                def documents(self, dataset, row=fields): return [{'id':'document-1', **row}]
+            with self.subTest(fields=fields):
+                state = self.flow.status(self.pid, Status())
+                self.assertEqual(state['sources'][0]['status'], expected)
+
     def test_changed_packaged_artifact_is_not_served(self):
         _, draft = self.evidence_draft()
         self.flow.review(self.pid, draft['id'], [], 'Reviewer', 'Keep existing inputs')
@@ -221,6 +240,10 @@ class AdditionalBoundaryTests(DocumentTests):
 
 
 class ConfigurationTests(unittest.TestCase):
+    def setUp(self):
+        config = patch('mcdxkit.document_clients.local_environment', return_value={})
+        config.start(); self.addCleanup(config.stop)
+
     def test_browser_settings_persist_privately_and_never_return_keys(self):
         from mcdxkit.document_clients import ModelConfig, save_configuration
         with tempfile.TemporaryDirectory() as folder, patch.dict('os.environ', {}, clear=True):

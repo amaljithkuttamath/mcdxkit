@@ -1,4 +1,5 @@
 """Small, bounded service adapters. No model dependency in the calculation engine."""
+from io import StringIO
 import json
 import os
 import re
@@ -9,6 +10,16 @@ import tempfile
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
+
+from dotenv import dotenv_values
+
+# Small synthetic evaluation, not a guarantee of provider availability or engineering accuracy.
+# Only recommend entries that are still present and free in the authenticated catalog.
+DEFAULT_ANSWER_MODEL = 'cohere/north-mini-code:free'
+MODEL_PREFERENCES = {
+    'text': (DEFAULT_ANSWER_MODEL,),
+    'embeddings': ('nvidia/llama-nemotron-embed-vl-1b-v2:free', 'nvidia/nemotron-3-embed-1b:free'),
+}
 
 
 class NoRedirect(HTTPRedirectHandler):
@@ -135,12 +146,27 @@ Every section and suggestion must cite supplied evidence IDs. Suggest only unmap
             raise ValueError('OpenRouter returned an invalid structured draft. Nothing was applied.') from None
 
 
-def secret(name):
-    filename = os.environ.get(name + '_FILE')
+def local_environment():
+    """Read only the launch directory's dotenv file; never execute or expand values."""
+    path = Path.cwd() / '.env'
+    if not path.exists(): return {}
+    try:
+        with path.open(encoding='utf-8') as stream:
+            content = stream.read(65537)
+        if len(content) > 65536: raise ValueError('Local .env exceeds 64 KiB.')
+        return {k: v for k, v in dotenv_values(stream=StringIO(content), interpolate=False).items() if v is not None}
+    except (OSError, UnicodeError):
+        raise ValueError('Cannot read local .env. Check its encoding and file permissions.') from None
+
+
+def secret(name, local):
+    # An explicitly exported key or _FILE takes precedence over both dotenv forms.
+    source = os.environ if name in os.environ or name + '_FILE' in os.environ else local
+    filename = source.get(name + '_FILE')
     if filename:
         with open(filename, encoding='utf-8') as file:
             return file.read().strip()
-    return os.environ.get(name, '')
+    return source.get(name, '')
 
 
 @dataclass(frozen=True)
@@ -154,9 +180,11 @@ class ModelConfig:
 
     @classmethod
     def from_env(cls):
-        return cls(os.environ.get('MCDXKIT_RAGFLOW_URL', ''), secret('MCDXKIT_RAGFLOW_API_KEY'),
-                   os.environ.get('MCDXKIT_RAGFLOW_EMBEDDING_MODEL', ''), secret('OPENROUTER_API_KEY'),
-                   os.environ.get('MCDXKIT_OPENROUTER_MODEL', ''), os.environ.get('MCDXKIT_RAGFLOW_RERANK_MODEL', ''))
+        local = local_environment()
+        values = {**local, **os.environ}
+        return cls(values.get('MCDXKIT_RAGFLOW_URL', ''), secret('MCDXKIT_RAGFLOW_API_KEY', local),
+                   values.get('MCDXKIT_RAGFLOW_EMBEDDING_MODEL', ''), secret('OPENROUTER_API_KEY', local),
+                   values.get('MCDXKIT_OPENROUTER_MODEL', DEFAULT_ANSWER_MODEL), values.get('MCDXKIT_RAGFLOW_RERANK_MODEL', ''))
 
     @classmethod
     def for_workspace(cls, root):
@@ -206,7 +234,14 @@ class ModelConfig:
             context = item.get('context_length')
             models[identifier] = {'id': identifier, 'name': name[:200] if isinstance(name, str) else identifier,
                                   'context_length': context if isinstance(context, int) and context > 0 else None}
-        return {'models': sorted(models.values(), key=lambda item: (item['name'].casefold(), item['id'])),
+        preferences = MODEL_PREFERENCES[modality]
+        for rank, identifier in enumerate(preferences):
+            if identifier in models:
+                models[identifier]['recommendation'] = ('Default' if rank == 0 else 'Alternative') + ' · tested 2026-10-14'
+                models[identifier]['evaluation_scope'] = 'Synthetic answer tests' if modality == 'text' else 'Direct OpenRouter retrieval test; RAGFlow indexing unverified'
+        return {'models': sorted(models.values(), key=lambda item: (
+                    preferences.index(item['id']) if item['id'] in preferences else len(preferences),
+                    item['name'].casefold(), item['id'])),
                 'free_only': True}
 
     def writer(self):

@@ -9,6 +9,11 @@ from mcdxkit.document_services import discover, installation
 
 
 class ServiceDiscoveryTests(unittest.TestCase):
+    def setUp(self):
+        # Developer credentials must never enter synthetic fixtures or failure output.
+        config = patch('mcdxkit.document_clients.local_environment', return_value={})
+        config.start(); self.addCleanup(config.stop)
+
     def test_installed_configuration_discovers_default_model_and_preserves_keys(self):
         with tempfile.TemporaryDirectory() as folder, patch.dict('os.environ', {'MCDXKIT_RAGFLOW_API_KEY': 'internal-test-key'}, clear=True):
             with patch('mcdxkit.document_services.health', return_value=True), patch.object(RAGFlow, 'call', return_value={'models': [
@@ -83,7 +88,7 @@ class ServiceDiscoveryTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, 'existing'):
                     connect_openrouter(folder, {'router_key':'private-router', 'model':'chat/a:free', 'search_model':'embed/a:free'})
                 call.assert_not_called()
-            self.assertFalse(ModelConfig.for_workspace(folder).router_key)
+            self.assertFalse(bool(ModelConfig.for_workspace(folder).router_key))
 
     def test_openrouter_setup_stores_one_key_after_success_and_preserves_configuration_on_failure(self):
         from mcdxkit.document_services import connect_openrouter
