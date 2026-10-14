@@ -187,7 +187,9 @@ class AdditionalBoundaryTests(DocumentTests):
                 ({'ingestion_status':'COMPLETED','chunk_count':'2'}, 'failed'),
                 ({'ingestion_status':'FAILED','chunk_count':2}, 'failed'),
                 ({'ingestion_status':'STOPPED','chunk_count':2}, 'failed'),
-                ({'ingestion_status':'UNSTART','chunk_count':0}, 'uploaded'),
+                ({'ingestion_status':'UNSTART','progress':1,'chunk_count':0}, 'uploaded'),
+                ({'ingestion_status':'SCHEDULED','progress':0.8,'chunk_count':0}, 'parsing'),
+                ({'ingestion_status':'CREATED','progress':0.8,'chunk_count':0}, 'parsing'),
                 ({'run':'UNSTART','chunk_count':0}, 'uploaded'),
                 ({'run':'0','chunk_count':0}, 'uploaded'),
                 ({'ingestion_status':'RUNNING','progress':1,'chunk_count':2}, 'parsing'),
@@ -200,6 +202,8 @@ class AdditionalBoundaryTests(DocumentTests):
                 state = self.flow.status(self.pid, Status())
                 self.assertEqual(state['sources'][0]['status'], expected)
                 self.assertEqual(state['sources'][1]['status'], 'uploaded')
+                if fields.get('ingestion_status') in ('UNSTART', 'SCHEDULED', 'CREATED'):
+                    self.assertEqual(state['sources'][0]['progress'], 0)
 
     def test_resume_unstarted_document_reuses_upload_and_resets_old_progress(self):
         self.evidence_draft()

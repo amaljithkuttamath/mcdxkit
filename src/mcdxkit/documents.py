@@ -257,7 +257,8 @@ class DocumentWorkflow:
                         # Current RAGFlow exposes task state separately from document validity.
                         # Its `status: "1"` means a valid document, not completed ingestion.
                         run = str(doc.get('ingestion_status') or doc.get('run', '')).upper()
-                        progress = doc.get('progress', 0)
+                        # RAGFlow can retain a prior attempt's progress while its retry is queued.
+                        progress = 0 if run in ('UNSTART', '0', 'CREATED', 'SCHEDULED') else doc.get('progress', 0)
                         source['progress'] = max(0, min(1, progress)) if type(progress) in (int, float) and math.isfinite(progress) else 0
                         chunks = doc.get('chunk_count', 0)
                         source['status'] = ('uploaded' if run in ('UNSTART', '0')
