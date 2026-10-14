@@ -98,6 +98,8 @@ def create_app(*, origin, template=None, output_dir='mcdxkit-output', access_tok
             response = JSONResponse({'error': str(exc)}, status_code=exc.status)
         for key, value in SECURITY_HEADERS.items():
             response.headers[key] = value
+        if request.url.path == '/documents' or request.url.path.startswith('/pdfjs/'):
+            response.headers['Content-Security-Policy'] = SECURITY_HEADERS['Content-Security-Policy'].replace("script-src 'self'", "script-src 'self' 'wasm-unsafe-eval'") .replace("style-src 'self'", "style-src 'self' 'unsafe-inline'") + "; worker-src 'self'; frame-src 'self' blob:"
         return response
 
     @app.exception_handler(RequestError)
@@ -197,6 +199,63 @@ def create_app(*, origin, template=None, output_dir='mcdxkit-output', access_tok
         entry = state.get(file_id, ['worksheet', 'audit', 'open_worksheet', 'calculated_worksheet'])
         return FileResponse(entry['path'], filename=entry['path'].name, media_type='application/octet-stream')
 
+    def documents():
+        from .documents import DocumentWorkflow
+        return DocumentWorkflow(state.output_dir / '.documents')
+
+    @app.get('/api/documents')
+    async def document_projects():
+        from .document_clients import ModelConfig
+        return await run_in_threadpool(execute, lambda: {
+            'projects': documents().listing(), 'configuration': ModelConfig.for_workspace(documents().root).public()})
+
+    @app.post('/api/documents/{action}')
+    async def document_action(action: str, request: Request):
+        if action == 'upload':
+            raw = await read_body(request, 256 * MIB, 'application/octet-stream')
+            return await run_in_threadpool(execute, lambda: documents().add_source(
+                request.query_params.get('project'), request.query_params.get('name'), raw))
+        if action not in ('configure', 'create', 'show', 'ingest', 'status', 'draft', 'review', 'build'):
+            raise RequestError('Not found.', 404)
+        try:
+            data = json.loads(await read_body(request, 16384, 'application/json'))
+            if not isinstance(data, dict): raise ValueError()
+        except (ValueError, UnicodeError, RecursionError):
+            raise RequestError('Expected a JSON object.')
+        def perform():
+            flow = documents()
+            if action == 'configure':
+                from .document_clients import save_configuration
+                return save_configuration(flow.root, data)
+            pid = data.get('project')
+            if action == 'create':
+                report = state.get(data.get('id'), ['report'])['path']
+                template = state.get(data['template_id'], ['template'])['path'] if data.get('template_id') else state.template
+                if template is None: raise ValueError('Select a template first.')
+                return flow.create(data.get('title'), report, template, cases=state.cases(data.get('cases')),
+                                   input_map=data.get('input_map'), load_source=state.basis(data))
+            if action == 'show': return flow.get(pid)
+            if action == 'ingest': return flow.ingest(pid)
+            if action == 'status': return flow.status(pid)
+            if action == 'draft': return flow.draft(pid, data.get('request'))
+            if action == 'review': return flow.review(pid, data.get('draft'), data.get('accepted'), data.get('reviewer'), data.get('note'))
+            return flow.build(pid, data.get('draft'))
+        return await run_in_threadpool(execute, perform)
+
+    @app.get('/api/documents/{pid}/sources/{sid}')
+    async def document_source(pid: str, sid: str):
+        path = await run_in_threadpool(execute, lambda: documents().source_path(pid, sid))
+        return FileResponse(path, media_type='application/pdf', filename='source.pdf')
+
+    @app.get('/api/documents/{pid}/runs/{rid}/{name}')
+    async def document_artifact(pid: str, rid: str, name: str):
+        path = await run_in_threadpool(execute, lambda: documents().artifact(pid, rid, name))
+        return FileResponse(path, filename=name, media_type='application/octet-stream')
+
+    @app.get('/documents')
+    async def document_page():
+        return FileResponse(STATIC / 'documents.html', media_type='text/html')
+
     @app.get('/api/history')
     async def history():
         return await run_in_threadpool(execute, state.history)
@@ -211,9 +270,19 @@ def create_app(*, origin, template=None, output_dir='mcdxkit-output', access_tok
             raise RequestError('Not found.', 404)
         return FileResponse(STATIC / 'fonts' / name, media_type='font/ttf')
 
+    @app.get('/pdfjs/{asset:path}')
+    async def pdf_asset(asset: str):
+        root = (STATIC / 'pdfjs').resolve()
+        path = (root / asset).resolve()
+        if not path.is_relative_to(root) or not path.is_file() or path.is_symlink():
+            raise RequestError('Not found.', 404)
+        suffix = path.suffix
+        media = {'mjs': 'text/javascript', 'js': 'text/javascript', 'wasm': 'application/wasm'}.get(suffix.lstrip('.'), 'application/octet-stream')
+        return FileResponse(path, media_type=media)
+
     @app.get('/{asset}')
     async def asset(asset: str):
-        if asset not in ('app.js', 'style.css'):
+        if asset not in ('app.js', 'style.css', 'documents.js', 'documents.css'):
             raise RequestError('Not found.', 404)
         return FileResponse(STATIC / asset, media_type='text/javascript' if asset.endswith('.js') else 'text/css')
 
@@ -289,8 +358,8 @@ def main(argv=None, prog='mcdxkit serve'):
     except (OSError, ValueError) as exc:
         parser.exit(2, f'mcdxkit: Cannot start server: {exc}\n')
     print(f'mcdxkit browser: {server.origin}\nOutputs: {server.state.output_dir}\n' +
-          ('Files are uploaded to this server.' if args.host == '0.0.0.0' else 'Local files stay on this computer.') +
-          '\nCtrl+C stops the server. Generated outputs are retained.', flush=True)
+          ('Files are uploaded to this server.' if args.host == '0.0.0.0' else 'Calculation files are stored on this computer.') +
+          '\nDocument indexing sends PDFs to RAGFlow; drafting sends selected evidence to OpenRouter.\nCtrl+C stops the server. Generated outputs are retained.', flush=True)
     if not args.no_open:
         webbrowser.open(server.origin)
     try:

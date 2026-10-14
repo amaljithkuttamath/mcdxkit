@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Design packages · MCDXKit</title><link rel="stylesheet" href="/documents.css"><script src="/documents.js" defer></script></head>
+<body><header><a href="/" class="brand">MCDXKit</a><span>Design packages</span><a href="/">Calculation workspace</a></header>
+<main><aside>
+<label for="projects">PROJECT</label><select id="projects"><option value="">Choose a saved project</option></select>
+<details id="new-project"><summary>New design package</summary><form id="create-form">
+<label for="project-title">Project title</label><input id="project-title" required maxlength="160" placeholder="Foundation design basis">
+<label for="raw-file">Raw load report</label><input id="raw-file" type="file" accept=".gp11t,.txt" required>
+<label for="template-file">Mathcad template</label><input id="template-file" type="file" accept=".mcdx" required>
+<label for="cases">Load case IDs</label><input id="cases" placeholder="e.g. 1, 7 (blank uses named strength cases)">
+<details><summary>Input mapping and load basis</summary><label for="input-map">Custom input map (JSON)</label><textarea id="input-map" placeholder='{"AxialCustom":"P"}'></textarea><label for="basis">Load basis</label><select id="basis"><option value="effects">Along-pile effects</option><option value="reactions">Pile-top reactions</option></select></details>
+<button type="submit">Create project</button><p class="muted">Review unfamiliar cases and mappings in the calculation workspace first.</p></form></details>
+<details class="configuration" id="service-settings"><summary>Service settings</summary><p id="configuration"></p>
+<form id="settings-form" autocomplete="off">
+<label for="rag-url">RAGFlow URL</label><input id="rag-url" type="url" placeholder="http://127.0.0.1:9380" maxlength="1024">
+<label for="rag-key">RAGFlow API key <span id="rag-key-status"></span></label><input id="rag-key" type="password" autocomplete="off" maxlength="4096" placeholder="Paste API key">
+<label for="embedding-model">Embedding model in RAGFlow</label><input id="embedding-model" maxlength="1024" placeholder="e.g. bge-m3@Ollama">
+<label for="rerank-model">Reranker (optional)</label><input id="rerank-model" maxlength="1024" placeholder="Configured RAGFlow reranker ID">
+<label for="router-key">OpenRouter API key <span id="router-key-status"></span></label><input id="router-key" type="password" autocomplete="off" maxlength="4096" placeholder="Paste API key">
+<label for="router-model">OpenRouter free model</label><input id="router-model" maxlength="1024" placeholder="provider/model:free">
+<p class="muted">Leave key fields blank to keep existing keys. Keys are saved on this server for this trusted workspace, never in browser storage or exported packages. Settings apply to every project here.</p>
+<button type="submit">Save service settings</button><p id="settings-result" role="status" class="muted"></p>
+</form></details>
+<section id="project-controls" hidden>
+<h2>1. Project sources</h2><p class="muted">PDF specifications, drawings and approved references. Originals remain available for inspection.</p>
+<label class="file-label" for="pdfs">Add PDFs</label><input id="pdfs" type="file" accept=".pdf" multiple>
+<div id="sources"></div><div class="actions"><button id="ingest">Index sources</button><button id="refresh-status" class="secondary">Refresh status</button></div>
+<h2>2. Draft design basis</h2><label for="request">What should the document cover?</label><textarea id="request" rows="5">Identify applicable requirements, qualified material inputs, assumptions and missing information for this template. Preserve code editions, units and exceptions.</textarea>
+<p class="muted">Drafting sends retrieved excerpts and template input definitions to OpenRouter. Only the configured free model is used.</p><button id="draft">Create cited draft</button>
+<h2>3. Review &amp; calculate</h2><p class="muted">Inspect citations and accept specific inputs in the document. The existing calculation engine produces the numerical results.</p>
+</section>
+
+</aside><section class="desk"><div class="desk-heading"><div><p class="eyebrow">SOURCE-BACKED ENGINEERING</p><h1 id="title">Create a design package</h1></div><span id="revision"></span></div>
+<div id="notice" role="status" aria-live="polite">Connecting…</div><progress id="progress" hidden aria-label="Document operation in progress"></progress>
+<nav aria-label="Document views"><button id="tab-draft" class="selected">Design basis</button><button id="tab-source">Original source</button><button id="tab-packages">Packages</button></nav>
+<div id="draft-view"><div id="draft-content" class="paper"><h2>From source documents to calculated outputs</h2><p>Select a project or create one from a load report and Mathcad template. Add source PDFs, draft the design basis, review its evidence, then calculate and export.</p></div></div>
+<div id="source-view" hidden><div class="source-heading"><strong id="source-title">Select a source or citation</strong><button id="source-download" class="secondary" disabled>Download original</button></div><div class="pdf-toolbar"><button id="previous-page" class="secondary">Previous</button><label for="pdf-page">Page</label><input id="pdf-page" type="number" min="1" value="1"><span id="pdf-pages"></span><button id="next-page" class="secondary">Next</button></div><div id="pdf-canvas-wrap"><canvas id="pdf-canvas" aria-label="Original PDF page"></canvas></div></div>
+<div id="packages-view" hidden></div>
+</section></main></body></html>

@@ -111,3 +111,5 @@ After **every push**, inspect the workflows for that exact commit SHA, including
 ## Continuous improvement
 
 The [repository audit](docs/improvement-loop.md) runs after releases and weekly. Work evidence-backed findings through issue branches and PRs. Check for an existing matching issue first, record the affected commit and reproduction, distinguish infrastructure failures from product defects, and add a regression test for changed behavior. Passing software checks never grant engineering approval. Do not mark an issue done until acceptance evidence and exact-head CI, including post-merge publishing, pass.
+
+For document-authoring contributions, include tests for cited source ownership, review staleness, unit compatibility and free-provider policy. Preserve ordinary offline calculation. Use synthetic source material in protocol/browser tests, and report live RAGFlow/OpenRouter runs separately. Read [document workflow](docs/document-workflow.md).

@@ -27,6 +27,8 @@ def main():
     if len(wheels) != 1:
         raise SystemExit('Expected exactly one mcdxkit wheel in dist/')
     required = {
+        'mcdxkit/web/pdfjs/pdf.mjs', 'mcdxkit/web/pdfjs/pdf.worker.mjs', 'mcdxkit/web/pdfjs/LICENSE',
+        'mcdxkit/web/documents.html', 'mcdxkit/web/documents.js', 'mcdxkit/web/documents.css',
         'mcdxkit/web/index.html', 'mcdxkit/web/app.js', 'mcdxkit/web/style.css',
         'mcdxkit/web/fonts/plex-regular.ttf', 'mcdxkit/web/fonts/plex-medium.ttf',
         'mcdxkit/web/fonts/plex-semibold.ttf', 'mcdxkit/web/fonts/OFL.txt',

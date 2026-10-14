@@ -25,7 +25,7 @@ mcdxkit = "mcdxkit.cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-mcdxkit = ["web/*.html", "web/*.css", "web/*.js", "web/fonts/*.ttf", "web/fonts/OFL.txt", "calcpad_bridge/*.cs", "calcpad_bridge/*.csproj"]
+mcdxkit = ["web/*.html", "web/*.css", "web/*.js", "web/pdfjs/*", "web/pdfjs/standard_fonts/*", "web/pdfjs/cmaps/*", "web/pdfjs/wasm/*", "web/fonts/*.ttf", "web/fonts/OFL.txt", "calcpad_bridge/*.cs", "calcpad_bridge/*.csproj"]
 
 [tool.ruff]
 extend-exclude = ["agents", "references"]

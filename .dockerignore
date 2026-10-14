@@ -22,3 +22,10 @@
 !src/mcdxkit/calcpad_bridge/
 !src/mcdxkit/calcpad_bridge/*.cs
 !src/mcdxkit/calcpad_bridge/*.csproj
+
+!src/mcdxkit/web/pdfjs/
+!src/mcdxkit/web/pdfjs/**
+
+**/.documents/
+**/.credentials.json
+**/.credentials-*

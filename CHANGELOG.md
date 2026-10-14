@@ -4,6 +4,8 @@ User-visible changes to MCDXKit (formerly gdcalc). The format follows [Keep a Ch
 
 ## Unreleased
 
+- Add source-backed design packages: persistent PDF evidence, RAGFlow indexing/retrieval, OpenRouter free-only drafts, explicit input review, and calculated report ZIPs through the shared CLI/browser workflow. Includes browser API-key settings with private server-side storage and pinned local deployment preparation.
+
 - Validate the template against the raw report before preview: expose mapping, unit, layout and pile-capacity problems in Inputs, refresh checks after input changes, and share preflight checks with native generation.
 
 - Discover scalar inputs from the selected Mathcad template and map them to P/Vy/Vz/My/Mz through CLI, SDK, batch and browser; preserve downstream formulas and grow source pages with the selected case count. Validate mapping dimensions and record custom mappings in audits and standards registers.

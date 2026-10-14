@@ -112,3 +112,7 @@ The HTTP layer checks Host/Origin, request tokens and hosted login state. Networ
 Actions tests Python versions and package contents before container checks. Only a successful `main` run pushes the exact tested image to GHCR. Pull-request code is tested without registry login or publication. The repository's public source, registry package visibility and a live hosted deployment are separate states.
 
 See [distributed execution boundaries](distributed-architecture.md) for the future API/job/worker/storage contract and its acceptance gates.
+
+## Source-backed document authoring
+
+The [document workflow](document-workflow.md) adds persistent design-basis drafting and review around the existing engine. RAGFlow owns parsing/retrieval; the explicit OpenRouter free model drafts cited prose and input suggestions. SQLite and immutable source snapshots record project/review state; CLI and browser use `documents.py`. Numerical results remain engine-owned. See [deployment](../deploy/ragflow.md).

@@ -54,6 +54,20 @@ class ServerTests(unittest.TestCase):
         return self.request('POST', '/api/upload?' + urlencode({'name': name, 'kind': kind}),
                             report().encode() if content is None else content)
 
+    def test_document_projects_reuse_uploaded_inputs_and_protect_sources(self):
+        _, raw = self.upload()
+        status, project = self.request('POST', '/api/documents/create', {'id': raw['id'], 'title': 'Synthetic project'})
+        self.assertEqual(status, 200, project)
+        pid = project['id']
+        status, source = self.request('POST', '/api/documents/upload?project=' + pid + '&name=spec.pdf', b'%PDF-1.4\nSynthetic')
+        self.assertEqual(status, 200, source)
+        path = '/api/documents/' + pid + '/sources/' + source['id']
+        self.assertEqual(self.request('GET', path)[1], b'%PDF-1.4\nSynthetic')
+        self.assertEqual(self.request('GET', path, authenticated=False)[0], 403)
+        self.assertEqual(self.request('POST', '/api/documents/create', {'id': '/etc/passwd', 'title': 'Forbidden'})[0], 404)
+        self.assertEqual(self.request('POST', '/api/documents/show', {'project': '../escape'})[0], 400)
+        self.assertEqual(self.request('GET', '/documents')[0], 200)
+
     def test_headerless_upload_requires_case_selection_then_calculates(self):
         status, uploaded = self.upload('summary.txt', summary_only().encode())
         self.assertEqual(status, 200, uploaded)
@@ -208,6 +222,22 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(self.request('POST', '/api/summary', {'reports': [reports[0], {'id': second['id'], 'cases': [99]}]})[0], 400)
         self.assertEqual(self.request('POST', '/api/summary', {'reports': reports, 'load_source': 'global'})[0], 400)
         self.assertEqual(self.request('POST', '/api/summary', {'reports': reports}, authenticated=False)[0], 403)
+
+    def test_browser_configuration_requires_session_and_never_returns_keys(self):
+        settings = {'url': 'http://127.0.0.1:9380', 'rag_key': 'test-rag-secret',
+                    'embedding': 'test-embedding', 'router_key': 'test-router-secret', 'model': 'test/model:free'}
+        self.assertEqual(self.request('POST', '/api/documents/configure', settings, authenticated=False)[0], 403)
+        status, value = self.request('POST', '/api/documents/configure', settings)
+        self.assertEqual(status, 200, value)
+        self.assertNotIn('secret', json.dumps(value))
+        status, listed = self.request('GET', '/api/documents')
+        self.assertEqual(status, 200)
+        self.assertNotIn('secret', json.dumps(listed))
+        self.assertTrue(listed['configuration']['openrouter_configured'])
+        self.assertEqual(self.request('POST', '/api/documents/configure', {'model': 'paid/model'})[0], 400)
+        status, value = self.request('POST', '/api/documents/configure', {'router_key': ''})
+        self.assertEqual(status, 200, value)
+        self.assertTrue(value['router_key_saved'])
 
     def test_static_ui_and_missing_template_error(self):
         status, html = self.request('GET', '/')

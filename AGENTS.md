@@ -87,3 +87,9 @@ After **every push**, inspect the workflows for that exact commit SHA, including
 The [repository audit](docs/improvement-loop.md) runs after releases and weekly. Work evidence-backed findings through issue branches and PRs. Check for an existing matching issue first, record the affected commit and reproduction, distinguish infrastructure failures from product defects, and add a regression test for changed behavior. Passing software checks never grant engineering approval. Do not mark an issue done until acceptance evidence and exact-head CI, including post-merge publishing, pass.
 
 Installed-package checks use `python scripts/test_installed.py` after installing the built wheel. Do not prepend the repository `src` directory during test discovery; that masks broken wheel/container installs. Keep test helpers and synthetic fixtures in the source archive, and validate both distributions with `scripts/check_package.py`.
+
+## Document-authoring changes
+
+Keep model integrations in `document_clients.py` and durable authoring/review/package logic in `documents.py`. Use the same workflow from CLI and HTTP. Test unknown/foreign citations, paid models, incompatible units, stale reviews, source tampering, rate limits and original-file authorization. AI narrative must remain labelled; computed tables must come from engine artifacts. No model-supplied paths, tools or executable formulas. Keep live service validation separate from controlled protocol fixtures.
+
+Browser service settings are shared workspace overrides, stored only in `.documents/.credentials.json`. Never return secret values, put them in browser storage, include them in exports or bypass session/CSRF checks. Test blank-key preservation, endpoint changes requiring a fresh key, free-only model validation and permissions.

@@ -30,3 +30,8 @@ mcdxkit-output/
 *.tfvars
 *.tfvars.json
 crash.log
+
+# Document projects and browser-entered service credentials are private.
+.documents/
+.credentials.json
+.credentials-*

@@ -190,3 +190,7 @@ For a host reachable over the network, follow [deployment instructions](../deplo
 ## Source and standards records
 
 After conversion, `mcdxkit standards init output.audit.json --output engineering-register.json` creates a pending provenance register. Use `mcdxkit standards inspect engineering-register.json --audit output.audit.json` to inspect it. The browser provides **Sources & standards** on generated outputs. See [the register guide](engineering-standards.md) for schema, scope and external review records. Never fabricate citations or attestations; software checks are not engineering approval.
+
+## Document creation
+
+`mcdxkit documents --help` exposes create, add, ingest, status, draft, review and build. Use the same `--workspace` directory across commands; the browser uses its output directory plus `.documents`. See [the complete workflow](document-workflow.md) for service setup, review semantics and examples.
