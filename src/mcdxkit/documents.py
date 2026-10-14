@@ -237,7 +237,8 @@ class DocumentWorkflow:
             with self.edit(pid) as state:
                 source = next(s for s in state['sources'] if s['id'] == sid)
                 if source['status'] in ('uploaded', 'failed'):
-                    client.parse(state['dataset_id'], [source['document_id']]); source['status'] = 'parsing'
+                    client.parse(state['dataset_id'], [source['document_id']])
+                    source['status'] = 'parsing'; source['progress'] = 0
         return self.get(pid)
 
     def status(self, pid, client=None):
@@ -259,7 +260,8 @@ class DocumentWorkflow:
                         progress = doc.get('progress', 0)
                         source['progress'] = max(0, min(1, progress)) if type(progress) in (int, float) and math.isfinite(progress) else 0
                         chunks = doc.get('chunk_count', 0)
-                        source['status'] = ('ready' if run in ('DONE', '3', 'COMPLETED') and type(chunks) is int and chunks > 0
+                        source['status'] = ('uploaded' if run in ('UNSTART', '0')
+                                            else 'ready' if run in ('DONE', '3', 'COMPLETED') and type(chunks) is int and chunks > 0
                                             else 'failed' if run in ('FAIL', 'FAILED', '4', 'CANCEL', '2', 'DONE', '3', 'COMPLETED', 'STOPPED') else 'parsing')
         return self.get(pid)
 

@@ -187,6 +187,9 @@ class AdditionalBoundaryTests(DocumentTests):
                 ({'ingestion_status':'COMPLETED','chunk_count':'2'}, 'failed'),
                 ({'ingestion_status':'FAILED','chunk_count':2}, 'failed'),
                 ({'ingestion_status':'STOPPED','chunk_count':2}, 'failed'),
+                ({'ingestion_status':'UNSTART','chunk_count':0}, 'uploaded'),
+                ({'run':'UNSTART','chunk_count':0}, 'uploaded'),
+                ({'run':'0','chunk_count':0}, 'uploaded'),
                 ({'ingestion_status':'RUNNING','progress':1,'chunk_count':2}, 'parsing'),
                 ({'ingestion_status':'UNKNOWN','run':'DONE','chunk_count':2}, 'parsing'),
                 ({'run':'DONE','chunk_count':2}, 'ready')]
@@ -197,6 +200,22 @@ class AdditionalBoundaryTests(DocumentTests):
                 state = self.flow.status(self.pid, Status())
                 self.assertEqual(state['sources'][0]['status'], expected)
                 self.assertEqual(state['sources'][1]['status'], 'uploaded')
+
+    def test_resume_unstarted_document_reuses_upload_and_resets_old_progress(self):
+        self.evidence_draft()
+        class Resume:
+            def __init__(self): self.parsed = []
+            def documents(self, dataset):
+                return [{'id': 'document-1', 'ingestion_status': 'UNSTART', 'progress': 1, 'chunk_count': 0}]
+            def upload(self, *args): raise AssertionError('Resume must reuse the uploaded document')
+            def parse(self, dataset, ids): self.parsed.extend(ids)
+        client = Resume()
+        self.flow.status(self.pid, client)
+        state = self.flow.ingest(self.pid, client)
+        self.assertEqual(client.parsed, ['document-1'])
+        self.assertEqual(state['sources'][0]['document_id'], 'document-1')
+        self.assertEqual(state['sources'][0]['status'], 'parsing')
+        self.assertEqual(state['sources'][0]['progress'], 0)
 
     def test_changed_packaged_artifact_is_not_served(self):
         _, draft = self.evidence_draft()

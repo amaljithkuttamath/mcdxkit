@@ -4,6 +4,8 @@ User-visible changes to MCDXKit (formerly gdcalc). The format follows [Keep a Ch
 
 ## Unreleased
 
+- Resume uploaded but unstarted RAGFlow documents without uploading duplicates; clear old progress when a parsing retry is accepted.
+
 - Read current RAGFlow ingestion states, requiring completed tasks with nonempty chunks before enabling answers. Bound the local Elasticsearch heap so PDF parsing can share an 8 GiB Docker VM.
 
 - Prefer free document models based on recorded synthetic tests: Cohere for answers, with two Nemotron search recommendations. Preserve existing selections and indexes; distinguish direct model tests from RAGFlow execution.
