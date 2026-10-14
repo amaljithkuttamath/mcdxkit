@@ -4,6 +4,10 @@ User-visible changes to MCDXKit (formerly gdcalc). The format follows [Keep a Ch
 
 ## Unreleased
 
+- Use one OpenRouter key for free search embeddings and answers through RAGFlow’s native adapter; provision the bundled local service account and preserve existing index models. No Ollama runtime is required.
+
+- Detect document-service health, local runtime state and the configured default search model; reserve infrastructure fields for advanced administration.
+
 - Discover supported free OpenRouter models from the browser after entering a key, with saved-key refresh and explicit connection errors.
 
 - Document libraries can now start without calculation files: add PDFs, index, ask cited questions, then connect a validated report/template while retaining sources and answers.

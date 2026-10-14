@@ -25,13 +25,17 @@ class HTTPClient:
             raise ValueError('A service API key is required.')
         self.url = url.rstrip('/')
         self.key = key
+        self.timeout = 90
+        self.response_authorization = ''
 
     def request(self, method, path, data=None, content_type='application/json'):
+        self.response_authorization = ''
         raw = data if isinstance(data, bytes) else json.dumps(data, allow_nan=False).encode() if data is not None else None
         req = Request(self.url + path, data=raw, method=method,
                       headers={'Authorization': 'Bearer ' + self.key, 'Content-Type': content_type})
         try:
-            with build_opener(NoRedirect()).open(req, timeout=90) as response:
+            with build_opener(NoRedirect()).open(req, timeout=self.timeout) as response:
+                self.response_authorization = response.headers.get('Authorization', '')
                 body = response.read(8 * 1024 * 1024 + 1)
                 if len(body) > 8 * 1024 * 1024:
                     raise ValueError('Model service response exceeds 8 MiB.')
@@ -173,18 +177,26 @@ class ModelConfig:
 
     def available_models(self, key=''):
         """Discover account-visible free text models without persisting a supplied key."""
+        return self._catalog(key, '/models/user', 'text')
+
+    def available_embeddings(self, key=''):
+        """Embedding catalog is separate from chat; availability still requires a live request."""
+        return self._catalog(key, '/embeddings/models', 'embeddings')
+
+    def _catalog(self, key, path, modality):
         if not isinstance(key, str): raise ValueError('Invalid API key.')
         key = key.strip() or self.router_key
         if not key or len(key) > 4096 or not key.isascii() or any(c.isspace() or ord(c) < 32 for c in key):
             raise ValueError('Enter an OpenRouter API key to load models.')
-        catalog = HTTPClient('https://openrouter.ai/api/v1', key).request('GET', '/models/user')
+        catalog = HTTPClient('https://openrouter.ai/api/v1', key).request('GET', path)
         if not isinstance(catalog.get('data'), list): raise ValueError('OpenRouter returned an invalid model catalog.')
         models = {}
         for item in catalog['data']:
             if not isinstance(item, dict): continue
             identifier, pricing, architecture = item.get('id'), item.get('pricing'), item.get('architecture')
             if not isinstance(identifier, str) or not re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.:-]+:free', identifier): continue
-            if not isinstance(architecture, dict) or 'text' not in (architecture.get('output_modalities') or []): continue
+            if not isinstance(architecture, dict) or modality not in (architecture.get('output_modalities') or []): continue
+            if modality == 'embeddings' and 'text' not in (architecture.get('input_modalities') or []): continue
             if not isinstance(pricing, dict) or not {'prompt', 'completion'} <= pricing.keys(): continue
             try:
                 if any(float(value) != 0 for value in pricing.values()): continue

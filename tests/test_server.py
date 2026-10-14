@@ -54,6 +54,27 @@ class ServerTests(unittest.TestCase):
         return self.request('POST', '/api/upload?' + urlencode({'name': name, 'kind': kind}),
                             report().encode() if content is None else content)
 
+    def test_service_discovery_is_authenticated_and_rejects_endpoint_overrides(self):
+        with mock.patch('mcdxkit.document_services.ServiceManager.discover', return_value={'service': {'state': 'runtime_stopped'}}) as discover:
+            status, _ = self.request('POST', '/api/documents/discover', {}, authenticated=False)
+            self.assertIn(status, (401, 403)); discover.assert_not_called()
+            status, body = self.request('POST', '/api/documents/discover', {})
+            self.assertEqual(status, 200, body)
+            self.assertEqual(body['service']['state'], 'runtime_stopped')
+            status, _ = self.request('POST', '/api/documents/discover', {'url': 'http://untrusted'})
+            self.assertEqual(status, 400)
+            self.assertEqual(discover.call_count, 1)
+
+    def test_openrouter_connection_requires_session_and_rejects_extra_fields(self):
+        with mock.patch('mcdxkit.document_services.connect_openrouter', return_value={'router_key_saved': True}) as connect:
+            status, _ = self.request('POST', '/api/documents/connect-openrouter', {}, authenticated=False)
+            self.assertIn(status, (401, 403)); connect.assert_not_called()
+            status, body = self.request('POST', '/api/documents/connect-openrouter', {'router_key': 'private', 'model':'a/b:free', 'search_model':'c/d:free'})
+            self.assertEqual(status, 200)
+            self.assertNotIn('private', json.dumps(body))
+        status, _ = self.request('POST', '/api/documents/connect-openrouter', {'url':'http://untrusted'})
+        self.assertEqual(status, 400)
+
     def test_model_discovery_requires_session_and_never_persists_key(self):
         with mock.patch('mcdxkit.document_clients.HTTPClient.request', return_value={'data': []}) as request:
             status, body = self.request('POST', '/api/documents/models', {'router_key': 'private-test-key'}, authenticated=False)
@@ -61,8 +82,8 @@ class ServerTests(unittest.TestCase):
             request.assert_not_called()
             status, body = self.request('POST', '/api/documents/models', {'router_key': 'private-test-key'})
             self.assertEqual(status, 200, body)
-            self.assertEqual(body, {'models': [], 'free_only': True})
-            request.assert_called_once_with('GET', '/models/user')
+            self.assertEqual(body, {'models': [], 'free_only': True, 'embedding_models': []})
+            self.assertEqual(request.call_args_list, [mock.call('GET', '/models/user'), mock.call('GET', '/embeddings/models')])
             self.assertFalse((self.root / 'results/.documents/.credentials.json').exists())
             status, _ = self.request('POST', '/api/documents/models', {'url': 'http://elsewhere', 'router_key': 'private-test-key'})
             self.assertEqual(status, 400)

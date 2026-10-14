@@ -36,9 +36,10 @@ test('discovery preserves a valid model selection and offers retry after a failu
  const {context,nodes,finish}=harness();finish();await new Promise(resolve=>setImmediate(resolve));
  nodes.get('router-model').value='example/model:free';
  const loading=vm.runInContext('loadModels()',context);
- finish({models:[{id:'example/model:free',name:'Example'}]});await loading;
+ finish({models:[{id:'example/model:free',name:'Example'}],embedding_models:[{id:'example/embed:free',name:'Search',context_length:8192}]});await loading;
  assert.equal(nodes.get('router-model').value,'example/model:free');
  assert.equal(nodes.get('router-model').children.length,2);
+ assert.equal(nodes.get('router-embedding').value,'example/embed:free');
  assert.match(nodes.get('model-status').textContent,/1 free text models/);
  const failing=vm.runInContext('loadModels()',context);finish({error:'Rate limited'});await failing;
  assert.match(nodes.get('model-status').textContent,/Retry with Refresh models/);

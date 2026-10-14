@@ -28,15 +28,21 @@
 <label for="cases">Load case IDs</label><input id="cases" placeholder="e.g. 1, 7 (blank uses named strength cases)">
 <details><summary>Input mapping and load basis</summary><label for="input-map">Custom input map (JSON)</label><textarea id="input-map" placeholder='{"AxialCustom":"P"}'></textarea><label for="basis">Load basis</label><select id="basis"><option value="effects">Along-pile effects</option><option value="reactions">Pile-top reactions</option></select></details>
 <button type="submit">Connect files</button><p class="muted">Confirm these files belong to this project. Files are validated and saved as immutable snapshots; existing documents and answers are retained.</p></form></dialog>
-<dialog id="settings-dialog" aria-labelledby="settings-title"><div class="dialog-heading"><div><p>Workspace connections</p><h2 id="settings-title">Service settings</h2></div><button class="icon-button close-dialog" data-dialog="settings-dialog" aria-label="Close service settings">×</button></div><p id="configuration" class="configuration-status"></p><form id="settings-form" autocomplete="off">
+<dialog id="settings-dialog" aria-labelledby="settings-title"><div class="dialog-heading"><div><p>Workspace connections</p><h2 id="settings-title">Service settings</h2></div><button class="icon-button close-dialog" data-dialog="settings-dialog" aria-label="Close service settings">×</button></div><form id="settings-form" autocomplete="off">
+<section class="service-card" aria-labelledby="rag-service-title"><h3 id="rag-service-title">Document search</h3><p id="rag-service-message" role="status">Checking the bundled document service…</p><button id="start-service" type="button" hidden>Start document search</button><button id="detect-services" type="button" class="secondary">Check again</button></section>
+<p class="muted">One OpenRouter key for document search and AI answers.</p>
+<label for="router-key">OpenRouter API key <span id="router-key-status"></span></label><input id="router-key" type="password" autocomplete="off" maxlength="4096" placeholder="Paste API key">
+<label for="router-model">Answer model</label><select id="router-model" aria-describedby="model-status"><option value="">Connect a key to load models</option></select>
+<label for="router-embedding">Document search model</label><select id="router-embedding"><option value="">Connect a key to load models</option></select>
+<p class="muted">Search sends document text to OpenRouter to create embeddings. Original PDFs stay on this server and in your RAGFlow service. Hosted AI needs internet.</p>
+<button id="refresh-models" type="button" class="secondary">Refresh models</button><p id="model-status" class="muted" role="status">Models load when you enter a key. Discovery sends no documents.</p>
+<p class="muted">Keys stay on this server. Leave blank to keep a saved key. Settings apply to this workspace.</p>
+<details id="advanced-services"><summary>Advanced connection settings</summary><p id="configuration" class="configuration-status"></p><p class="muted">For administrators connecting a separate RAGFlow server. Bundled deployments should supply their internal key and search model automatically.</p>
 <label for="rag-url">RAGFlow URL</label><input id="rag-url" type="url" placeholder="http://127.0.0.1:9380" maxlength="1024">
 <label for="rag-key">RAGFlow API key <span id="rag-key-status"></span></label><input id="rag-key" type="password" autocomplete="off" maxlength="4096" placeholder="Paste API key">
-<label for="embedding-model">Embedding model in RAGFlow</label><input id="embedding-model" maxlength="1024" placeholder="e.g. bge-m3@Ollama">
+<label for="embedding-model">Embedding model in RAGFlow</label><input id="embedding-model" maxlength="1024" placeholder="Administrator-provided model ID">
 <label for="rerank-model">Reranker (optional)</label><input id="rerank-model" maxlength="1024" placeholder="Configured RAGFlow reranker ID">
-<label for="router-key">OpenRouter API key <span id="router-key-status"></span></label><input id="router-key" type="password" autocomplete="off" maxlength="4096" placeholder="Paste API key">
-<label for="router-model">OpenRouter model</label><select id="router-model" aria-describedby="model-status"><option value="">Connect a key to load models</option></select>
-<button id="refresh-models" type="button" class="secondary">Refresh models</button><p id="model-status" class="muted" role="status">Enter your key to see available free text models. No generation is billed during discovery.</p>
-<p class="muted">Leave key fields blank to keep existing keys. Keys are saved on this server for this trusted workspace, never in browser storage or exported packages. Settings apply to every project here.</p>
+</details>
 <button type="submit">Save service settings</button><p id="settings-result" role="status" class="muted"></p>
 </form></dialog>
 </body></html>

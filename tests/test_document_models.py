@@ -46,3 +46,14 @@ class ModelDiscoveryTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, '401'): config.available_models()
             for key in ('a\nb', 'a b', 5):
                 with self.subTest(key=key), self.assertRaises(ValueError): config.available_models(key)
+
+    def test_embedding_catalog_is_distinct_and_rejects_paid_or_missing_prices(self):
+        config = ModelConfig('', '', '', 'private-key', '')
+        rows = [model('embed/free:free', architecture={'input_modalities':['text'], 'output_modalities':['embeddings']}),
+                model('chat/free:free'), model('embed/paid', architecture={'input_modalities':['text'], 'output_modalities':['embeddings']}),
+                model('embed/unknown:free', architecture={'input_modalities':['text'], 'output_modalities':['embeddings']}, pricing={})]
+        with patch.object(HTTPClient, 'request', return_value={'data': rows}) as request:
+            result = config.available_embeddings()
+        self.assertEqual([item['id'] for item in result['models']], ['embed/free:free'])
+        request.assert_called_once_with('GET', '/embeddings/models')
+        self.assertNotIn('private-key', json.dumps(result))

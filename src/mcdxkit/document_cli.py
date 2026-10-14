@@ -11,6 +11,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser(prog='mcdxkit documents', description='Create cited design packages using RAGFlow, OpenRouter free models and the shared calculation engine.')
     parser.add_argument('--workspace', default='mcdxkit-output/.documents', help='Persistent document-project directory (same server output directory/.documents)')
     sub = parser.add_subparsers(dest='action', required=True)
+    sub.add_parser('discover', help='Detect document service health and its default search model')
     sub.add_parser('config', help='Show configuration presence, never secrets')
     sub.add_parser('list', help='List saved projects')
     create = sub.add_parser('create', help='Create a document library, optionally with calculation files')
@@ -35,7 +36,10 @@ def main(argv=None):
     build.add_argument('project'); build.add_argument('draft')
     args = parser.parse_args(argv)
     try:
-        if args.action == 'config': result = ModelConfig.for_workspace(args.workspace).public()
+        if args.action == 'discover':
+            from .document_services import discover
+            result = discover(args.workspace)
+        elif args.action == 'config': result = ModelConfig.for_workspace(args.workspace).public()
         else:
             flow = DocumentWorkflow(args.workspace)
             if args.action == 'list': result = flow.listing()

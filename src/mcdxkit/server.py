@@ -56,6 +56,8 @@ def create_app(*, origin, template=None, output_dir='mcdxkit-output', access_tok
                plan=None):
     """Create one workspace. Deploy one process/replica per trusted user or team."""
     state = Session(template, output_dir, checks, plan)
+    from .document_services import ServiceManager
+    document_services = ServiceManager(state.output_dir / '.documents')
     cookie_key = secrets.token_bytes(32)
     failed_logins = []
     secure = origin.startswith('https:')
@@ -217,7 +219,7 @@ def create_app(*, origin, template=None, output_dir='mcdxkit-output', access_tok
             raw = await read_body(request, 256 * MIB, 'application/octet-stream')
             return await run_in_threadpool(execute, lambda: documents().add_source(
                 request.query_params.get('project'), request.query_params.get('name'), raw))
-        if action not in ('configure', 'models', 'create', 'connect', 'calculation', 'ask', 'show', 'ingest', 'status', 'draft', 'review', 'build'):
+        if action not in ('configure', 'connect-openrouter', 'models', 'discover', 'start-service', 'create', 'connect', 'calculation', 'ask', 'show', 'ingest', 'status', 'draft', 'review', 'build'):
             raise RequestError('Not found.', 404)
         try:
             data = json.loads(await read_body(request, 16384, 'application/json'))
@@ -226,13 +228,23 @@ def create_app(*, origin, template=None, output_dir='mcdxkit-output', access_tok
             raise RequestError('Expected a JSON object.')
         def perform():
             flow = documents()
+            if action == 'connect-openrouter':
+                with document_services.lock:
+                    from .document_services import connect_openrouter
+                    return connect_openrouter(flow.root, data)
             if action == 'configure':
                 from .document_clients import save_configuration
                 return save_configuration(flow.root, data)
+            if action in ('discover', 'start-service'):
+                if data: raise ValueError('Service discovery/start takes no connection overrides.')
+                return document_services.discover() if action == 'discover' else document_services.start()
             if action == 'models':
                 from .document_clients import ModelConfig
                 if set(data) - {'router_key'}: raise ValueError('Unknown model discovery fields.')
-                return ModelConfig.for_workspace(flow.root).available_models(data.get('router_key', ''))
+                config = ModelConfig.for_workspace(flow.root)
+                result = config.available_models(data.get('router_key', ''))
+                result['embedding_models'] = config.available_embeddings(data.get('router_key', ''))['models']
+                return result
             pid = data.get('project')
             if action == 'create' and not data.get('id'):
                 if data.get('template_id'): raise ValueError('Provide both the report and template, or neither.')

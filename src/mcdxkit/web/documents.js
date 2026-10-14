@@ -1,13 +1,13 @@
 'use strict';
 const $=id=>document.getElementById(id);
 const element=(tag,value,cls)=>{const e=document.createElement(tag);if(value!==undefined)e.textContent=value;if(cls)e.className=cls;return e;};
-let connections=null,controlState=null;
+let connections=null,controlState=null,serviceReady=null;
 let token='',project=null,busy=false,pdfBlob=null,pdfDocument=null,pdfPage=1,reviewDirty=false;
 async function api(path,data){const options={headers:{'X-MCDXKit-Token':token}};if(data!==undefined){options.method='POST';options.headers['Content-Type']='application/json';options.body=JSON.stringify(data);}const r=await fetch(path,options);const body=await r.json();if(!r.ok)throw new Error(body.error||'Request failed.');return body;}
 function notify(message,error=false){$('notice').textContent=message;$('notice').className=error?'error':'';const opened=document.querySelector('dialog[open]');if(opened){let status=opened.querySelector('.dialog-notice');if(!status){status=element('p',undefined,'dialog-notice');status.setAttribute('role','status');opened.querySelector('.dialog-heading').after(status);}status.textContent=message;status.className='dialog-notice '+(error?'settings-error':'muted');}}
 function openDialog(id){const dialog=$(id);dialog.querySelector('.dialog-notice')?.remove();dialog.showModal();}
 $('open-connect').onclick=()=>openDialog('connect-dialog');
-$('open-settings').onclick=()=>{openDialog('settings-dialog');if(connections?.router_key_saved)loadModels();};
+$('open-settings').onclick=()=>{openDialog('settings-dialog');run('Checking document services…',async()=>{await discoverServices();if(connections?.router_key_saved)await fetchModels();});};
 for(const id of ['open-create','rail-create','empty-create'])$(id).onclick=()=>openDialog('create-dialog');
 for(const button of document.querySelectorAll('.close-dialog'))button.onclick=()=>$(button.dataset.dialog).close();
 $('pdfs').previousElementSibling.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();$('pdfs').click();}});
@@ -19,36 +19,52 @@ function tab(name){for(const key of ['answers','draft','source','packages']){$('
 for(const name of ['answers','draft','source','packages'])$('tab-'+name).onclick=()=>tab(name);
 function configuration(c){
  connections=c;
+ const search=c.embedding?.endsWith('@mcdxkit@OpenRouter')?c.embedding.slice(0,-'@mcdxkit@OpenRouter'.length):'';if(search&&!Array.from($('router-embedding').options).some(o=>o.value===search))$('router-embedding').append(new Option(search+' · saved',search));$('router-embedding').value=search;
  const selected=c.model||'';if(!Array.from($('router-model').options).some(o=>o.value===selected))$('router-model').append(new Option(selected+' · saved',selected));$('router-model').value=selected;
- $('service-label').textContent=c.ragflow_configured&&c.openrouter_configured?'Service settings':'Connect services';
+ $('service-label').textContent=serviceReady!==false&&c.ragflow_configured&&c.openrouter_configured?'Service settings':'Connect services';
  $('configuration').textContent=`RAGFlow: ${c.ragflow_configured?'configured':'needs setup'}. OpenRouter: ${c.openrouter_configured?'configured':'needs setup'}.`;
  for(const [id,key] of [['rag-url','url'],['embedding-model','embedding'],['rerank-model','reranker']])$(id).value=c[key]||'';
  for(const [id,key] of [['rag-key','rag_key_saved'],['router-key','router_key_saved']]){$(id).value='';$(id).placeholder=c[key]?'Leave blank to keep saved key':'Paste API key';$(id+'-status').textContent=c[key]?'· configured':'';}
- $('service-dot').classList.toggle('ready',c.ragflow_configured&&c.openrouter_configured);$('open-settings').title=c.ragflow_configured&&c.openrouter_configured?'Service connections configured':'Connect RAGFlow and OpenRouter';
+ $('service-dot').classList.toggle('ready',serviceReady!==false&&c.ragflow_configured&&c.openrouter_configured);$('open-settings').title=serviceReady!==false&&c.ragflow_configured&&c.openrouter_configured?'Service connections configured':'Connect RAGFlow and OpenRouter';
 }
-async function loadModels(){
- if(busy)return;
- await run('Loading available OpenRouter models…',async()=>{
+async function fetchModels(){
   $('model-status').textContent='Checking key and loading models…';
-  const selected=$('router-model').value;
+  const selected=$('router-model').value,selectedSearch=$('router-embedding').value;
   try{
    const result=await api('/api/documents/models',{router_key:$('router-key').value.trim()});
    $('router-model').replaceChildren(new Option(result.models.length?'Choose a model':'No supported free models available',''));
    for(const model of result.models)$('router-model').append(new Option(model.name+' · '+model.id,model.id));
    if(result.models.some(m=>m.id===selected))$('router-model').value=selected;
    $('model-status').textContent=result.models.length?`${result.models.length} free text models available for this key. Choose one, then save settings. Availability and rate limits can change.`:'Key accepted, but this account has no compatible free text models. Check provider/privacy settings or refresh later.';
+   const embeddings=result.embedding_models||[];
+   $('router-embedding').replaceChildren(new Option(embeddings.length?'Choose a search model':'No supported free search models available',''));
+   for(const model of embeddings)$('router-embedding').append(new Option(model.name+' · '+model.id,model.id));
+   if(embeddings.some(m=>m.id===selectedSearch))$('router-embedding').value=selectedSearch;
+   else if(!connections?.embedding&&embeddings.length)$('router-embedding').value=[...embeddings].sort((a,b)=>(b.context_length||0)-(a.context_length||0))[0].id;
+   $('model-status').textContent+=` ${embeddings.length} free search models listed; connection is verified when indexing.`;
    notify('Model list updated.');
   }catch(error){$('model-status').textContent=error.message+' Model list was not updated. Retry with Refresh models.';throw error;}
- });
 }
+async function loadModels(){await run('Loading available OpenRouter models…',fetchModels);}
+async function discoverServices(){
+ const searchSelection=$('router-embedding').value;
+ const dirty={};for(const [id,key] of [['rag-url','url'],['rag-key','rag_key'],['embedding-model','embedding'],['rerank-model','reranker'],['router-key','router_key'],['router-model','model']]){const value=$(id).value;if(value&&(key.endsWith('key')||value!==(connections?.[key]||'')))dirty[id]=value;}
+ const result=await api('/api/documents/discover',{});serviceReady=result.service.state==='ready';configuration(result.configuration);
+ for(const [id,value] of Object.entries(dirty))$(id).value=value;
+ if(searchSelection)$('router-embedding').value=searchSelection;
+ $('start-service').hidden=!result.service.can_start;$('rag-service-title').textContent=result.service.title;$('rag-service-message').textContent=result.service.message;$('notice').textContent=result.service.title;document.querySelector('#settings-dialog .dialog-notice')?.remove();updateReadiness();
+}
+$('start-service').onclick=()=>run('Starting document search…',async()=>{await api('/api/documents/start-service',{});await discoverServices();notify('Document-service startup requested. Check again for its current status.');});
+$('detect-services').onclick=()=>run('Checking document services…',discoverServices);
 $('router-key').onchange=()=>loadModels();
 $('refresh-models').onclick=()=>loadModels();
 async function refreshList(){const data=await api('/api/documents');$('projects').replaceChildren(new Option('Choose a saved project',''));for(const p of data.projects)$('projects').append(new Option(p.title,p.id));if(project)$('projects').value=project.id;configuration(data.configuration);return data.projects;}
 $('settings-form').onsubmit=e=>{e.preventDefault();run('Saving service settings…',async()=>{
  const settings={};for(const [id,key] of [['rag-url','url'],['rag-key','rag_key'],['embedding-model','embedding'],['rerank-model','reranker'],['router-key','router_key'],['router-model','model']])settings[key]=$(id).value.trim();
- const saved=await api('/api/documents/configure',settings);configuration(saved);$('settings-result').textContent='Saved on this server. Connection is checked when you index sources or create a draft.';notify('Service settings saved.');
+ const search=$('router-embedding').value;
+ const saved=(search||!settings.embedding)?await api('/api/documents/connect-openrouter',{router_key:settings.router_key,model:settings.model,search_model:search}):await api('/api/documents/configure',settings);configuration(saved);await discoverServices();$('settings-result').textContent='Saved on this server. Connection is checked when you index sources or create a draft.';notify('Service settings saved.');
 });};
-function updateReadiness(){if(!project)return;const indexed=project.sources.length>0&&project.sources.every(s=>s.status==='ready'),configured=connections?.ragflow_configured&&connections?.openrouter_configured;$('ask').disabled=busy||!indexed||!configured;$('draft').disabled=busy||!indexed||!configured;$('ingest').disabled=busy||!project.sources.length||!connections?.ragflow_configured;$('question-hint').textContent=!configured?'Connect services to index your documents and ask questions. You can inspect originals now.':!indexed?'Index your documents before asking a question.':'Answers cite your project sources. Verify the original passage before applying a value.';}
+function updateReadiness(){if(!project)return;const indexed=project.sources.length>0&&project.sources.every(s=>s.status==='ready'),configured=serviceReady!==false&&connections?.ragflow_configured&&connections?.openrouter_configured;$('ask').disabled=busy||!indexed||!configured;$('draft').disabled=busy||!indexed||!configured;$('ingest').disabled=busy||!project.sources.length||!connections?.ragflow_configured||serviceReady===false;$('question-hint').textContent=serviceReady===false?'Document search is not ready. Open Connect services for its status. You can inspect originals now.':!configured?'Connect services to index your documents and ask questions. You can inspect originals now.':!indexed?'Index your documents before asking a question.':'Answers cite your project sources. Verify the original passage before applying a value.';}
 async function releasePDF(){const previous=pdfDocument;pdfDocument=null;pdfBlob=null;$('pdf-canvas').getContext('2d').clearRect(0,0,$('pdf-canvas').width,$('pdf-canvas').height);$('source-title').textContent='Choose a PDF from the file rail';$('pdf-pages').textContent='';$('source-download').disabled=true;if(previous)await previous.loadingTask.destroy();}
 async function select(id){if(project?.id!==id)await releasePDF();project=await api('/api/documents/show',{project:id});history.replaceState(null,'','/documents?project='+id);render();await refreshList();if(!pdfDocument&&project.sources.length){const source=project.sources[0];await openPDF(source.id,source.name,1,false);}notify('Project restored. Originals, answers and packages are saved on this server.');}
 function cite(e){return action(e.id+' · '+e.source_name,()=>run('Opening original source…',()=>openPDF(e.source_id,e.source_name,e.positions[0]?.[0])),'citation');}
@@ -137,5 +153,5 @@ $('ingest').onclick=()=>run('Submitting sources to RAGFlow…',async()=>{project
 $('refresh-status').onclick=()=>run('Checking RAGFlow indexing status…',async()=>{project=await api('/api/documents/status',{project:project.id});render();notify(project.sources.every(s=>s.status==='ready')?'Sources indexed. Ready for questions.':'Some sources are not ready. Review their status.');});
 $('draft').onclick=()=>run('Retrieving evidence and drafting with OpenRouter…',async()=>{await api('/api/documents/draft',{project:project.id,request:$('request').value});await select(project.id);tab('draft');notify('Draft created. Inspect citations and review the proposed inputs.');});
 $('ask').onclick=()=>run('Retrieving evidence and answering with citations…',async()=>{const answer=await api('/api/documents/ask',{project:project.id,question:$('question').value});await select(project.id);$('answer-history').value=answer.id;showAnswer();tab('answers');notify('Answer saved. Follow citations to verify the original pages.');});
-async function connect(){const r=await fetch('/api/session');if(!r.ok)throw new Error('Sign in through the calculation workspace, then reopen Document library.');token=(await r.json()).token;const projects=await refreshList();const pid=new URLSearchParams(location.search).get('project')||(projects.length===1?projects[0].id:null);if(pid)await select(pid);else{notify('Create a project to begin.');$('workflow-status').textContent='Create a library';}}
+async function connect(){const r=await fetch('/api/session');if(!r.ok)throw new Error('Sign in through the calculation workspace, then reopen Document library.');token=(await r.json()).token;const projects=await refreshList();const pid=new URLSearchParams(location.search).get('project')||(projects.length===1?projects[0].id:null);if(pid)await select(pid);else{notify('Create a project to begin.');$('workflow-status').textContent='Create a library';}await discoverServices();}
 run('Connecting…',connect);
