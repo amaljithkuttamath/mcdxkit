@@ -181,6 +181,7 @@ class BrowserAssetTests(unittest.TestCase):
 class AdditionalBoundaryTests(DocumentTests):
     def test_current_ingestion_states_and_legacy_run_require_completed_nonempty_chunks(self):
         self.evidence_draft()
+        self.flow.add_source(self.pid, 'pending.pdf', b'%PDF-1.4\npending synthetic source')
         rows = [({'ingestion_status':'COMPLETED','chunk_count':2}, 'ready'),
                 ({'ingestion_status':'COMPLETED','chunk_count':0}, 'failed'),
                 ({'ingestion_status':'COMPLETED','chunk_count':'2'}, 'failed'),
@@ -195,6 +196,7 @@ class AdditionalBoundaryTests(DocumentTests):
             with self.subTest(fields=fields):
                 state = self.flow.status(self.pid, Status())
                 self.assertEqual(state['sources'][0]['status'], expected)
+                self.assertEqual(state['sources'][1]['status'], 'uploaded')
 
     def test_changed_packaged_artifact_is_not_served(self):
         _, draft = self.evidence_draft()

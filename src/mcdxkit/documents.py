@@ -246,6 +246,9 @@ class DocumentWorkflow:
                 client = client or ModelConfig.for_workspace(self.root).ragflow()
                 docs = {d['id']: d for d in client.documents(state['dataset_id'])}
                 for source in state['sources']:
+                    if not source['document_id']:
+                        source['status'] = 'uploaded'; source['progress'] = 0
+                        continue
                     doc = docs.get(source['document_id'])
                     if not doc:
                         source['status'] = 'failed'; source['progress'] = 0
