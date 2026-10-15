@@ -37,3 +37,9 @@ The present hosted app is one trusted shared workspace. Horizontal scaling requi
 Use a ticket, a scoped branch and a pull request. Test the behavior and its failure boundaries with independently expected results. Use real-engine tests for numerical changes, browser verification for interactions and installed-package/container checks for delivery. Publish only after checks pass on the current revision. Record unverified platforms and runtimes plainly.
 
 For UI details use [the visual design guide](ui-design.md); for code boundaries use [architecture](architecture.md); for acceptance evidence use [the testing contract](testing.md). Update these decisions when a change intentionally alters them.
+
+## Conversation as part of the work
+
+Keep Ask one click away in primary navigation. It understands the user's files and recorded workflow, not just question text. Show real search/validation activity as it occurs, preserve conversational context across follow-ups and refreshes, and explain gaps without invented confidence percentages. Do not stream private reasoning or present unfinished model text as verified evidence.
+
+Pause for the person when intent, applicability or input decisions are missing. Keep the question and choices in context; accept free text too. Distinguish a suggested action from an executed action. Use existing review/mapping controls to change engineering inputs, with the original source a click away. Keep sources in an on-demand drawer and calculations/tasks at the center.

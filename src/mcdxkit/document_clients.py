@@ -16,6 +16,22 @@ from dotenv import dotenv_values
 # Small synthetic evaluation, not a guarantee of provider availability or engineering accuracy.
 # Only recommend entries that are still present and free in the authenticated catalog.
 DEFAULT_ANSWER_MODEL = 'cohere/north-mini-code:free'
+# Paid models are allowed only by name, each pinned to one provider with fallbacks off, no data collection
+# and a per-million-token price cap (USD). Requirement extraction and Ask share this route.
+PINNED_PAID_MODELS = {
+    'deepseek/deepseek-v4.1-flash': {'only': ['deepinfra/fp8'], 'allow_fallbacks': False, 'data_collection': 'deny',
+                                     'require_parameters': True, 'max_price': {'prompt': 0.5, 'completion': 1}},
+}
+
+
+def allowed_model(model):
+    """A specific free model, or a pinned paid one. Random routers and other paid models are refused."""
+    return isinstance(model, str) and (model in PINNED_PAID_MODELS or bool(re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.:-]+:free', model)))
+
+
+def provider_route(model):
+    """OpenRouter `provider` settings for a model: the pinned route for a paid one, otherwise no fallbacks."""
+    return dict(PINNED_PAID_MODELS[model]) if model in PINNED_PAID_MODELS else {'allow_fallbacks': False, 'data_collection': 'deny'}
 MODEL_PREFERENCES = {
     'text': (DEFAULT_ANSWER_MODEL,),
     'embeddings': ('nvidia/llama-nemotron-embed-vl-1b-v2:free', 'nvidia/nemotron-3-embed-1b:free'),
@@ -33,7 +49,8 @@ class HTTPClient:
         if parsed.scheme not in ('http', 'https') or not parsed.hostname or parsed.username or parsed.password or parsed.query or parsed.fragment:
             raise ValueError('Service URL must be an HTTP(S) base URL without credentials or query parameters.')
         if not key or '\n' in key or '\r' in key:
-            raise ValueError('A service API key is required.')
+            raise ValueError('A service API key is missing, so nothing was sent. In the browser, add it in Services; '
+                             'from the command line, set the matching variable from .env.example.')
         self.url = url.rstrip('/')
         self.key = key
         self.timeout = 90
@@ -78,7 +95,7 @@ class RAGFlow(HTTPClient):
         return result.get('data')
 
     def create_dataset(self, name):
-        if not self.embedding: raise ValueError('Set MCDXKIT_RAGFLOW_EMBEDDING_MODEL to an installed RAGFlow embedding model.')
+        if not self.embedding: raise ValueError('Choose a RAGFlow embedding model in Services, or set MCDXKIT_RAGFLOW_EMBEDDING_MODEL from the command line.')
         data = self.call('POST', '/datasets', {'name': name, 'embedding_model': self.embedding, 'parser_id': 'general'})
         if not isinstance(data, dict) or not isinstance(data.get('id'), str) or not data['id']:
             raise ValueError('RAGFlow returned no dataset ID.')
@@ -115,8 +132,9 @@ class RAGFlow(HTTPClient):
 
 class OpenRouter(HTTPClient):
     def __init__(self, key, model):
-        if not isinstance(model, str) or not re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.:-]+:free', model):
-            raise ValueError('Set MCDXKIT_OPENROUTER_MODEL to a specific provider/model:free. Paid models and random routers are disabled.')
+        if not allowed_model(model):
+            raise ValueError('Choose a specific free answer model (provider/model:free) or a listed paid model in Services, '
+                             'or set MCDXKIT_OPENROUTER_MODEL from the command line. Other paid models and random routers are disabled.')
         super().__init__('https://openrouter.ai/api/v1', key)
         self.model = model
 
@@ -130,7 +148,7 @@ Every section and suggestion must cite supplied evidence IDs. Suggest only unmap
             'model': self.model, 'messages': [{'role': 'system', 'content': instruction},
                 {'role': 'user', 'content': json.dumps(context, allow_nan=False)}],
             'temperature': 0, 'max_tokens': 4096,
-            'provider': {'allow_fallbacks': False, 'data_collection': 'deny'},
+            'provider': provider_route(self.model),
         })
         if response.get('error'): raise ValueError('OpenRouter could not generate the draft. No fallback was used.')
         try:
@@ -177,6 +195,9 @@ class ModelConfig:
     router_key: str = field(repr=False)
     model: str
     reranker: str = ""
+    # Ask provider: OpenRouter free models, or the signed-in ChatGPT plan (local servers only).
+    provider: str = "openrouter"
+    chatgpt_model: str = ""
 
     @classmethod
     def from_env(cls):
@@ -185,6 +206,11 @@ class ModelConfig:
         return cls(values.get('MCDXKIT_RAGFLOW_URL', ''), secret('MCDXKIT_RAGFLOW_API_KEY', local),
                    values.get('MCDXKIT_RAGFLOW_EMBEDDING_MODEL', ''), secret('OPENROUTER_API_KEY', local),
                    values.get('MCDXKIT_OPENROUTER_MODEL', DEFAULT_ANSWER_MODEL), values.get('MCDXKIT_RAGFLOW_RERANK_MODEL', ''))
+
+    @property
+    def answer_model(self):
+        """Recorded model identity for answers; distinguishes providers."""
+        return 'chatgpt:' + self.chatgpt_model if self.provider == 'chatgpt' else self.model
 
     @classmethod
     def for_workspace(cls, root):
@@ -197,14 +223,16 @@ class ModelConfig:
                 'openrouter_configured': bool(self.router_key and self.model), 'model': self.model,
                 'url': self.url, 'embedding': self.embedding, 'reranker': self.reranker,
                 'rag_key_saved': bool(self.rag_key), 'router_key_saved': bool(self.router_key),
+                'provider': self.provider, 'chatgpt_model': self.chatgpt_model,
                 'hosted_drafting': True, 'paid_fallback': False}
 
     def ragflow(self):
-        if not self.url or not self.rag_key: raise ValueError('Configure MCDXKIT_RAGFLOW_URL and MCDXKIT_RAGFLOW_API_KEY (or _FILE).')
+        if not self.url or not self.rag_key: raise ValueError('RAGFlow is not configured, so nothing was sent. In the browser, open Services and add the RAGFlow URL and API key. '
+                                                           'From the command line, set MCDXKIT_RAGFLOW_URL and MCDXKIT_RAGFLOW_API_KEY (or _FILE).')
         return RAGFlow(self.url, self.rag_key, self.embedding, self.reranker)
 
     def available_models(self, key=''):
-        """Discover account-visible free text models without persisting a supplied key."""
+        """Discover account-visible free text models, plus pinned paid ones, without persisting a supplied key."""
         return self._catalog(key, '/models/user', 'text')
 
     def available_embeddings(self, key=''):
@@ -222,18 +250,22 @@ class ModelConfig:
         for item in catalog['data']:
             if not isinstance(item, dict): continue
             identifier, pricing, architecture = item.get('id'), item.get('pricing'), item.get('architecture')
-            if not isinstance(identifier, str) or not re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.:-]+:free', identifier): continue
+            pinned = modality == 'text' and isinstance(identifier, str) and identifier in PINNED_PAID_MODELS
+            if not pinned and (not isinstance(identifier, str) or not re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.:-]+:free', identifier)): continue
             if not isinstance(architecture, dict) or modality not in (architecture.get('output_modalities') or []): continue
             if modality == 'embeddings' and 'text' not in (architecture.get('input_modalities') or []): continue
             if not isinstance(pricing, dict) or not {'prompt', 'completion'} <= pricing.keys(): continue
             try:
-                if any(float(value) != 0 for value in pricing.values()): continue
+                if not pinned and any(float(value) != 0 for value in pricing.values()): continue
             except (TypeError, ValueError, OverflowError):
                 continue
             name = item.get('name')
             context = item.get('context_length')
             models[identifier] = {'id': identifier, 'name': name[:200] if isinstance(name, str) else identifier,
                                   'context_length': context if isinstance(context, int) and context > 0 else None}
+            if pinned:
+                route = PINNED_PAID_MODELS[identifier]
+                models[identifier].update(paid=True, recommendation='Paid · billed to your OpenRouter key · ' + route['only'][0].split('/')[0] + ' only, no fallback')
         preferences = MODEL_PREFERENCES[modality]
         for rank, identifier in enumerate(preferences):
             if identifier in models:
@@ -242,14 +274,15 @@ class ModelConfig:
         return {'models': sorted(models.values(), key=lambda item: (
                     preferences.index(item['id']) if item['id'] in preferences else len(preferences),
                     item['name'].casefold(), item['id'])),
-                'free_only': True}
+                'free_only': not any(m.get('paid') for m in models.values())}
 
     def writer(self):
-        if not self.router_key: raise ValueError('Configure OPENROUTER_API_KEY (or _FILE) for hosted drafting.')
+        if not self.router_key: raise ValueError('OpenRouter is not configured, so nothing was sent. In the browser, open Services and add an OpenRouter API key. '
+                                              'From the command line, set OPENROUTER_API_KEY (or _FILE).')
         return OpenRouter(self.router_key, self.model)
 
 
-_CONFIG_FIELDS = {'url', 'rag_key', 'embedding', 'router_key', 'model', 'reranker'}
+_CONFIG_FIELDS = {'url', 'rag_key', 'embedding', 'router_key', 'model', 'reranker', 'provider', 'chatgpt_model'}
 
 
 def _saved_configuration(root):
@@ -283,6 +316,11 @@ def save_configuration(root, changes):
         raise ValueError('Enter the RAGFlow API key again when changing its endpoint.')
     if updated['url']: HTTPClient(updated['url'], updated['rag_key'] or 'configuration-validation')
     if updated['model']: OpenRouter(updated['router_key'] or 'configuration-validation', updated['model'])
+    if updated['provider'] not in ('openrouter', 'chatgpt'): raise ValueError('Choose OpenRouter or ChatGPT as the answer provider.')
+    if updated['chatgpt_model'] and not re.fullmatch(r'[A-Za-z0-9._:-]{1,100}', updated['chatgpt_model']):
+        raise ValueError('Choose a ChatGPT model from the list for the signed-in account.')
+    if updated['provider'] == 'chatgpt' and not updated['chatgpt_model']:
+        raise ValueError('Load and choose a ChatGPT model before using ChatGPT for Ask.')
     for key in ('rag_key', 'router_key'):
         if updated[key] and (not updated[key].isascii() or any(c.isspace() for c in updated[key])):
             raise ValueError('API keys must contain printable ASCII without spaces.')

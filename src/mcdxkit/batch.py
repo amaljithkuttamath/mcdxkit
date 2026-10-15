@@ -49,6 +49,49 @@ def discover(inputs, output_dir, *, recursive=False):
     return sorted(found)
 
 
+def identity(source, source_sha256, template_sha256, settings, checks_identity):
+    """Stable job ID: the inputs, settings, review checks and the engine revision that computes them.
+
+    A new CalcpadCE revision or translator version gives a new ID, so resume never reuses an older result."""
+    value = json.dumps([source, source_sha256, template_sha256, settings, calcpad.REVISION, calcpad.TRANSLATOR_VERSION,
+                        checks_identity], sort_keys=True, allow_nan=False)
+    return hashlib.sha256(value.encode()).hexdigest()[:16]
+
+
+def schedule(jobs, run, record, workers=1):
+    """Run each job once and record each result as it finishes. Nothing is retried.
+
+    With one worker, jobs run in this process and an exception from `run` stops the schedule; callers
+    record per-job failures themselves (calculate_all relies on this to stop when its job is cancelled).
+    With several workers, `run` must be a picklable module-level function, and one job's exception
+    becomes its own failed record without stopping the others."""
+    if workers == 1:
+        for job in jobs:
+            record(run(job))
+        return
+    iterator = iter(jobs)
+    with ProcessPoolExecutor(max_workers=workers, mp_context=multiprocessing.get_context('spawn')) as pool:
+        pending = {}
+        exhausted = False
+        while pending or not exhausted:
+            while not exhausted and len(pending) < workers * 2:
+                job = next(iterator, None)
+                if job is None:
+                    exhausted = True
+                else:
+                    pending[pool.submit(run, job)] = job
+            if not pending:
+                break
+            completed, _ = wait(pending, return_when=FIRST_COMPLETED)
+            for future in completed:
+                job = pending.pop(future)
+                try:
+                    result = future.result()
+                except Exception as exc:
+                    result = {**job, 'status': 'failed', 'error': str(exc), 'native_execution_verified': False}
+                record(result)
+
+
 @contextmanager
 def manifest_lock(root):
     # OS locks are released after process death; no stale lock recovery flag needed.
@@ -279,8 +322,7 @@ def convert_batch(inputs, template, output_dir, *, workers=1, recursive=False, r
                     if path.stat().st_size > 16 * 1024 * 1024:
                         raise ValueError('Raw report exceeds 16 MiB')
                     source_hash = digest(path)
-                    identity = json.dumps([str(path), source_hash, template_hash, settings, calcpad.REVISION, calcpad.TRANSLATOR_VERSION, plan.identity], sort_keys=True, allow_nan=False)
-                    job_id = hashlib.sha256(identity.encode()).hexdigest()[:16]
+                    job_id = identity(str(path), source_hash, template_hash, settings, plan.identity)
                     stem = re.sub(r'[^A-Za-z0-9_-]+', '-', path.stem).strip('-')[:80] or 'worksheet'
                     yield {'job_id': job_id, 'source': str(path), 'source_sha256': source_hash,
                            'template': str(template), 'template_sha256': template_hash, 'settings': settings,
@@ -289,31 +331,7 @@ def convert_batch(inputs, template, output_dir, *, workers=1, recursive=False, r
                     record({'source': str(path), 'source_sha256': None, 'status': 'failed', 'error': str(exc),
                             'native_execution_verified': False})
 
-        if workers == 1:
-            for job in jobs():
-                record(_convert_job(job))
-        else:
-            iterator = iter(jobs())
-            with ProcessPoolExecutor(max_workers=workers, mp_context=multiprocessing.get_context('spawn')) as pool:
-                pending = {}
-                exhausted = False
-                while pending or not exhausted:
-                    while not exhausted and len(pending) < workers * 2:
-                        job = next(iterator, None)
-                        if job is None:
-                            exhausted = True
-                        else:
-                            pending[pool.submit(_convert_job, job)] = job
-                    if not pending:
-                        break
-                    completed, _ = wait(pending, return_when=FIRST_COMPLETED)
-                    for future in completed:
-                        job = pending.pop(future)
-                        try:
-                            result = future.result()
-                        except Exception as exc:
-                            result = {**job, 'status': 'failed', 'error': str(exc), 'native_execution_verified': False}
-                        record(result)
+        schedule(jobs(), _convert_job, record, workers)
         table.sort(key=lambda r: tuple(str(r[c]) for c in CHECK_COLUMNS))
         if check_rows is not None:
             check_rows.extend(table)

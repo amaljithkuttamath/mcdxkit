@@ -1,4 +1,7 @@
 include scripts/*.py
 include tests/*.py
 include tests/*.cjs
-recursive-include tests/fixtures *.txt
+recursive-include tests/fixtures *.txt *.json
+include frontend/*.json frontend/*.ts frontend/index.html
+recursive-include frontend/src *.ts *.tsx *.css
+recursive-include frontend/scripts *.mjs
