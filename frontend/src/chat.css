@@ -72,7 +72,7 @@
 .cx-check{padding:3px 10px;border-radius:8px;background:var(--cx-amber-bg);font-size:12px;font-weight:500;color:var(--cx-amber)}
 .cx-status.unchecked{background:transparent;padding:0;color:var(--cx-ink-3)}
 /* Grounding badges: quiet tints; none of them reads as a pass mark. */
-.cx-status.g-grounded{background:var(--cx-cite);color:var(--cx-cite-ink)}
+.cx-status.g-grounded,.cx-status.g-citations_checked{background:var(--cx-cite);color:var(--cx-cite-ink)}
 .cx-status.g-withheld,.cx-status.g-abstained{background:var(--cx-amber-bg);color:var(--cx-amber)}
 .cx-status.g-workflow{background:var(--cx-mist);color:var(--cx-ink-2)}
 .cx-byline{flex-wrap:wrap}

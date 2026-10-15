@@ -5,11 +5,11 @@ export type Source = {id:string; name:string; status?:string; sha256?:string};
 export type Extraction = {id:string; source_id:string; source_name:string; facts:Fact[]; gaps:string[]; model:string};
 export type Evidence = {id:string; source_id:string; source_name:string; positions:number[][]; text:string; kind?:'page_context'|'extraction_quote'; truncated?:boolean; page_characters?:number};
 export type Audit = {status:'passed'|'warnings'; cited:string[]; unsupported_numbers:{heading:string;values:string[]}[]; meaning:string};
-// Grounding record (GROUNDING_CONTRACT.md, grounding/1). Absent on answers saved before the gate existed.
+// Answer-check record (docs/answer-audit.md). Historical statement checks remain readable.
 export type GroundingQuote = {evidence_id:string; text:string};
 export type GroundingVerdict = 'supported'|'unsupported'|'uncertain'|'structural';
 export type GroundingStatement = {id:string; kind:'heading'|'section'|'conflict'; section:number|null; verdict:GroundingVerdict; reasons:string[]; checks_applied?:string[]; anchored?:boolean; text?:string; evidence_ids?:string[]; quotes?:GroundingQuote[]};
-export type Grounding = {version:string; status:'grounded'|'withheld'|'abstained'|'workflow'; draft_withheld?:boolean; method?:string; statements?:GroundingStatement[]; inline_anchored?:number; checked_statements?:number; unconfirmed_statements?:number; reason_code?:string; coverage?:'partial'|'searchable_documents'; scope?:{retrieval?:string; precedence?:string; approval?:string}; meaning?:string};
+export type Grounding = {version:string; status:'citations_checked'|'grounded'|'withheld'|'abstained'|'workflow'; draft_withheld?:boolean; method?:string; statements?:GroundingStatement[]; inline_anchored?:number; checked_statements?:number; unconfirmed_statements?:number; reason_code?:string; coverage?:'partial'|'searchable_documents'; scope?:{retrieval?:string; precedence?:string; approval?:string}; meaning?:string};
 export type ActivityType ='step'|'search'|'context'|'extraction'|'check';
 export type Activity = {seq?:number; time:number; message:string; type?:ActivityType; detail?:{query?:string;passages?:number;sources?:string[];source?:string;pages?:number[];facts?:number;extraction_id?:string;status?:string;citations?:number;unsupported?:number;finished?:number;total?:number}};
 // Result of a calculate_all job: one row per pinned calculation, in the order calculated.

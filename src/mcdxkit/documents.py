@@ -621,7 +621,7 @@ class DocumentWorkflow:
             if parent: raise ValueError('Follow-ups require the document agent.')
             return self.generate(pid, question, client, writer, purpose='answer')
         import inspect
-        from .knowledge import KnowledgeAgent, KnowledgeAnswer, VERSION, SEARCH_QUERY_BUDGET, CONTEXT_PAGE_CHARS, audit_citations, canonical_citations, grounding_gate, safe_clarification
+        from .knowledge import KnowledgeAgent, KnowledgeAnswer, VERSION, SEARCH_QUERY_BUDGET, CONTEXT_PAGE_CHARS, audit_citations, canonical_citations, citation_review, safe_clarification
         from .extraction import EvidenceRequestError
         question = text(question, 'Question', 2000)
         state = self.get(pid); self.verify(state)
@@ -767,23 +767,17 @@ class DocumentWorkflow:
         self.event('check', f'Citations checked: {unsupported} stated numbers not found in cited text' if unsupported
                    else f'Citations checked: {len(draft_audit["cited"])} cited passages from this turn',
                    status=draft_audit['status'], citations=len(draft_audit['cited']), unsupported=unsupported)
-        # Grounding gate: only statements confirmed against their cited passages are published;
-        # otherwise the draft is withheld and a server-authored explanation is saved instead.
-        verify = getattr(agent, 'verify', None)      # no verifier: the gate withholds; there is no bypass
-        if verify is not None and content['sections']:
-            self.event('check', 'Checking each statement against its cited passages', status='grounding')
-        # The gate sees the validated draft; everything it returns is either checked model text
-        # (sections, conflicts) or server-authored (assessment explanation, gaps).
-        grounding, published, assessment, gaps = grounding_gate(verify, payload, content['sections'], evidence, coverage, workflow)
-        unconfirmed = grounding.pop('_unconfirmed', [])
-        content = {**content, 'sections': published, 'gaps': list(gaps)}     # server-owned gaps are appended below
-        audit = audit_citations(published, evidence)
-        self.event('check', {'grounded': 'Published statements were matched to quoted passages',
-                             'withheld': 'Draft withheld: statements could not be confirmed',
+        # Ordinary conversation checks source identity without rewriting Markdown or running a second
+        # model over every sentence. Extraction, review and input binding retain their own validation.
+        grounding, published, assessment, gaps = citation_review(payload, content['sections'], evidence, coverage, workflow)
+        content = {**content, 'sections': published, 'gaps': list(gaps)}
+        audit = audit_citations(published, evidence, [assessment['explanation'], *assessment['conflicts'], *gaps,
+                                                     *(section['heading'] for section in published)])
+        self.event('check', {'citations_checked': 'Answer citations match retrieved project passages',
                              'abstained': 'No supported answer found',
                              'workflow': 'Workflow guidance from project state; no document statements published'}[grounding['status']],
                    status=grounding['status'])
-        clarification = safe_clarification(payload['clarification']) if grounding['status'] != 'withheld' else None
+        clarification = safe_clarification(payload['clarification'])
         for entry in contexts:
             if entry['truncated_pages']:
                 content['gaps'].append(f"Original page context from {short(entry['source_name'], 120)} pages {', '.join(map(str, entry['truncated_pages']))} "
@@ -796,15 +790,11 @@ class DocumentWorkflow:
                   'parent_id': parent, 'created': time.time(), 'revision': state['revision'], 'request': question,
                   'model': agent.model, 'agent_version': VERSION, 'content': content, 'evidence': evidence,
                   'review': None, 'purpose': 'answer', 'calculation_context': None, 'coverage': coverage, 'searches': searches,
-                  'kind': 'research' if grounding['status'] == 'withheld' else payload['kind'],
+                  'kind': 'workflow' if grounding['status'] == 'workflow' else 'research',
                   'actions': payload['actions'], 'workflow_state': workflow,
                   'clarification': clarification, 'extraction_ids': extractions,
                   'context_reads': contexts, 'audit': audit, 'extraction_offer': offers[0] if offers else None,
                   'grounding': grounding, 'assessment': assessment}
-        if unconfirmed:
-            path = self.unconfirmed_path(pid, aid)
-            path.parent.mkdir(exist_ok=True)
-            with path.open('x', encoding='utf-8') as stream: json.dump(unconfirmed, stream, allow_nan=False)
         with self.edit(pid, result=record) as current:
             self.verify(current)
             if current['revision'] != state['revision']: raise ValueError('Project sources changed during research; start a new question.')
@@ -1119,10 +1109,14 @@ def answer_receipt(state, answer, integrity):
     from .knowledge import WITHHELD_REASONS, citation_ids
     known = {row.get('id') for row in answer.get('evidence') or []}
     registered = {s['id'] for s in state['sources']}
-    # Cited = listed by a section, referenced inline in a section body (known IDs only), or matched by a statement.
+    # Include citations in open questions/conflicts as well as the main answer and historical statement checks.
+    extra_text = [*_strs(content.get('gaps')), *_strs(_dict(answer.get('assessment')).get('conflicts')),
+                  _str(_dict(answer.get('assessment')).get('explanation')) or '',
+                  *(_str(s.get('heading')) or '' for s in sections)]
     cited = ({ref for s in sections for ref in _strs(s.get('evidence_ids'))}
              | {ref for s in sections for ref in citation_ids(_str(s.get('body')) or '') if ref in known}
-             | {ref for st in statements for ref in _strs(st.get('evidence_ids'))})
+             | {ref for st in statements for ref in _strs(st.get('evidence_ids'))}
+             | {ref for value in extra_text for ref in citation_ids(value) if ref in known})
     used: dict[str, list[str]] = {}
     for statement in statements:
         for ref in _strs(statement.get('evidence_ids')): used.setdefault(ref, []).append(str(statement.get('id')))
