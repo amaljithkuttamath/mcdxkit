@@ -1,13 +1,18 @@
 import {Button, Checkbox} from 'react-aria-components';
-import type {Fact, Job, Source} from './types';
+import type {CalculateAllResult, Fact, Job, Source} from './types';
 
 export function JobStatus({job,onCancel}:{job:Job;onCancel:()=>void}) {
   const active=['queued','running'].includes(job.state);
-  return <div className={'job-status '+job.state} role={job.state==='failed'?'alert':'status'}>
-    <div><strong>{job.stage}</strong>{job.error&&<p>{job.error}</p>}
+  // Measured progress only: a determinate bar needs counts the backend recorded (finished of total).
+  const measured=[...(job.activity||[])].reverse().find(a=>typeof a.detail?.total==='number'&&typeof a.detail?.finished==='number')?.detail;
+  const all=job.action==='calculate_all'&&job.state==='succeeded'?job.result as CalculateAllResult:null;
+  const problems=all?.calculations.filter(c=>c.status==='failed')||[];
+  return <div className={'job-status '+job.state+(problems.length?' failed':'')} role={job.state==='failed'||problems.length?'alert':'status'}>
+    <div><strong>{all?`Calculate all: ${all.succeeded} calculated, ${all.skipped} already calculated, ${all.failed} failed`:job.stage}</strong>{job.error&&<p>{job.error}</p>}
+    {problems.map(c=><p key={c.calculation_id}>{c.name}: {c.error}</p>)}
     {job.uncertain&&<p>The remote request may have completed. Check saved results before starting another request.</p>}</div>
-    {active&&<><progress aria-label={job.stage}/><Button onPress={onCancel}>Cancel</Button></>}
-    {job.state==='succeeded'&&<span>Saved</span>}
+    {active&&<>{measured?<progress aria-label={job.stage} value={measured.finished} max={measured.total}/>:<progress aria-label={job.stage}/>}<Button onPress={onCancel}>Cancel</Button></>}
+    {job.state==='succeeded'&&!problems.length&&<span>Saved</span>}
   </div>;
 }
 

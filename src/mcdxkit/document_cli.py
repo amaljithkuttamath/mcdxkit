@@ -64,6 +64,10 @@ def main(argv=None):
     build = sub.add_parser('build', help='Calculate accepted inputs and create an immutable report package')
     build.add_argument('project'); build.add_argument('draft', nargs='?', help='Omit to calculate retained template inputs without a design-basis review claim')
     build.add_argument('--calculation', help='Calculation ID; required without a draft when the project has several')
+    build.add_argument('--all', action='store_true', help='Calculate every calculation in the project, one run each. '
+                       'Calculations that already have a verified run for the same inputs and engine are skipped, so '
+                       'running it again after an interruption finishes the rest. A failure stays with its calculation; '
+                       'nothing is retried. Exits 1 if any calculation failed')
     basis.add_argument('--calculation', help='Calculation ID; required when the project has several')
     args = parser.parse_args(argv)
     try:
@@ -79,7 +83,11 @@ def main(argv=None):
             elif args.action == 'cancel': result = store.cancel(args.job)
             else: result = store.public(store.submit(args.project, args.operation, json.loads(args.payload), args.request_key))
         else:
-            flow = DocumentWorkflow(args.workspace)
+            if args.action == 'build' and args.all and (args.draft or args.calculation):
+                raise ValueError('--all calculates retained template inputs for every calculation; omit the draft and --calculation.')
+            # Measured progress (finished calculations) goes to stderr; the JSON result stays on stdout.
+            progress = (lambda message: print(message, file=sys.stderr, flush=True)) if args.action == 'build' and args.all else None
+            flow = DocumentWorkflow(args.workspace, progress=progress)
             if args.action == 'list': result = flow.listing()
             elif args.action == 'create': result = flow.create(args.title, args.report, args.template, cases=args.cases,
                     input_map=json.loads(args.input_map) if args.input_map else None, load_source=args.load_source)
@@ -118,6 +126,9 @@ def main(argv=None):
             elif args.action == 'status': result = flow.status(args.project)
             elif args.action == 'draft': result = flow.draft(args.project, args.request, calculation=args.calculation)
             elif args.action == 'review': result = flow.review(args.project, args.draft, args.accept, args.reviewer, args.note)
+            elif args.all:
+                result = flow.calculate_all(args.project)
+                print(json.dumps(result, indent=2, allow_nan=False)); return 1 if result['failed'] else 0
             else:
                 result = flow.build(args.project, args.draft, args.calculation)
                 result['package'] = str(flow.artifact(args.project, result['id'], 'package.zip'))

@@ -193,7 +193,15 @@ After conversion, `mcdxkit standards init output.audit.json --output engineering
 
 ## Document creation
 
-`mcdxkit documents --help` exposes project creation, the workspace template library (`templates add|list|archive|restore`), calculations per project (`connect`, `calculations`), upload/index, conversational ask, selected-page extraction, requirement/draft review, build and durable submit/jobs/job/cancel. Use the same `--workspace` directory across commands; the browser uses its output directory plus `.documents`. See [the complete workflow](document-workflow.md) for service setup, review semantics and examples.
+`mcdxkit documents --help` exposes project creation, the workspace template library (`templates add|list|archive|restore`), calculations per project (`connect`, `calculations`, `build PROJECT --all`), upload/index, conversational ask, selected-page extraction, requirement/draft review, build and durable submit/jobs/job/cancel. Use the same `--workspace` directory across commands; the browser uses its output directory plus `.documents`. See [the complete workflow](document-workflow.md) for service setup, review semantics and examples.
+
+To calculate every calculation in a project, one run each:
+
+```bash
+mcdxkit documents --workspace ./mcdxkit-output/.documents build PROJECT_ID --all
+```
+
+Progress (`Finished N of M calculations`) goes to stderr and the JSON result to stdout. A calculation that already has a verified run for the same inputs and engine is skipped, so running the command again after an interruption finishes the rest without duplicate runs. One calculation's failure stays on its own row and nothing is retried; the command exits 1 if any calculation failed. See [Calculate all](document-workflow.md#calculate-all).
 
 
 To carry reviewed extracted values into the calculation workflow, use the same review bridge as the browser:

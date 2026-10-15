@@ -13,7 +13,8 @@ import zipfile
 from contextlib import contextmanager
 from pathlib import Path
 
-from . import engine
+from . import batch, engine
+from .review import runner as review_runner
 from .document_clients import ModelConfig
 
 
@@ -257,6 +258,17 @@ class DocumentWorkflow:
         """The calculation a design-basis draft belongs to. Drafts saved before projects held several
         calculations have no ID; on a project with a legacy calculation they belong to it."""
         return draft.get('calculation_id') or (LEGACY_CALCULATION if state.get('report_sha256') else None)
+
+    @staticmethod
+    def calculation_identity(calculation):
+        """batch.py's job identity for calculating retained template inputs (no design basis, no overrides).
+
+        It covers the immutable snapshot, its options, the review checks and the engine revision, so a
+        recorded run matches only when the same inputs would be calculated by the same engine."""
+        settings = json.loads(json.dumps({'cases': calculation['options'].get('cases'), 'load_source': calculation['options'].get('load_source'),
+                                          'input_map': calculation['options'].get('input_map'), 'overrides': {}, 'checks': 'default'}, allow_nan=False))
+        return batch.identity(calculation['id'], calculation['report_sha256'], calculation['template_sha256'], settings,
+                              review_runner.prepare('default').identity)
 
     def calculation_folder(self, pid, calculation):
         if calculation['id'] == LEGACY_CALCULATION: return self.root / pid
@@ -907,6 +919,7 @@ class DocumentWorkflow:
                     if p.is_file() and p.name != 'package.zip': archive.write(p, str(p.relative_to(folder)))
             run = {'id': rid, 'draft_id': did, 'calculation_id': calc['id'], 'created': manifest['created'], 'sha256': file_digest(folder/'package.zip'),
                    'calculated': True, 'native_execution_verified': False, 'check_summary': result.get('check_summary')}
+            if did is None: run['job_id'] = self.calculation_identity(calc)
             with self.edit(pid, result=run) as current:
                 self.verify(current)
                 if current['revision'] != state['revision'] or (did is not None and self.selected_draft(current, did) != draft):
@@ -917,6 +930,64 @@ class DocumentWorkflow:
             shutil.rmtree(folder)
             raise
         return run
+
+    def calculate_all(self, pid, calculations=None):
+        """Calculate several calculations of one project with batch.py's scheduler, job identity and resume.
+
+        Each calculation gets its own run with its calculation_id. A calculation that already has a run with
+        the same identity and an intact package is skipped, so resubmitting after an interruption finishes the
+        rest without duplicate runs. One calculation's failure is recorded on its row and never marks another
+        failed; nothing is retried. Changed snapshot files still block the whole project (see verify).
+        Progress is measured: one update when each calculation finishes."""
+        state = self.get(pid)
+        if calculations is None: chosen = self.calculations(state)
+        else:
+            if not isinstance(calculations, list) or not calculations or len(calculations) > MAX_CALCULATIONS \
+                    or len(set(map(str, calculations))) != len(calculations):
+                raise ValueError('Choose one or more distinct calculations to calculate.')
+            chosen = [self.require_calculation(state, cid) for cid in calculations]
+        if not chosen: self.require_calculation(state)     # the actionable "connect" error
+        self.verify(state)
+        total = len(chosen); rows = []
+        counts = {'total': total, 'succeeded': 0, 'skipped': 0, 'failed': 0}
+
+        def jobs():
+            for calc in chosen:
+                yield {'job_id': self.calculation_identity(calc), 'calculation_id': calc['id'], 'name': calc['name']}
+
+        def run(job):
+            if self.guard is not None:
+                # A cancelled job stops before its next calculation instead of recording it as failed.
+                with self.connection() as db: self.guard(db)
+            row = {**job, 'run_id': None, 'check_summary': None, 'error': None}
+            try:
+                done = self.verified_run(pid, job['calculation_id'], job['job_id'])
+                if done is not None:
+                    return {**row, 'status': 'skipped', 'run_id': done['id'], 'check_summary': done.get('check_summary')}
+                built = self.build(pid, None, job['calculation_id'])
+                return {**row, 'status': 'succeeded', 'run_id': built['id'], 'check_summary': built.get('check_summary')}
+            except Exception as exc:
+                return {**row, 'status': 'failed', 'error': str(exc) if isinstance(exc, ValueError) else f'{type(exc).__name__}: {exc}'[:500]}
+
+        def record(row):
+            rows.append(row); counts[row['status']] += 1
+            self.event('step', f"Finished {len(rows)} of {total} calculations", finished=len(rows), total=total)
+
+        self.event('step', f'Finished 0 of {total} calculations', finished=0, total=total)
+        # One worker: every run commits to the same project database, and nothing is retried after a lock timeout.
+        batch.schedule(jobs(), run, record, workers=1)
+        return {'project_id': pid, **counts, 'calculations': rows, 'calculation_engine': 'CalcpadCE', 'native_execution_verified': False}
+
+    def verified_run(self, pid, cid, job_id):
+        """The newest run of this calculation with this job identity whose package is intact, or None."""
+        for run in reversed(self.get(pid)['runs']):
+            if run.get('calculation_id', LEGACY_CALCULATION) == cid and run.get('job_id') == job_id and run.get('calculated'):
+                try:
+                    self.artifact(pid, run['id'], 'package.zip')
+                    return run
+                except (ValueError, OSError):
+                    continue
+        return None
 
     def artifact(self, pid, rid, name):
         state = self.get(pid)

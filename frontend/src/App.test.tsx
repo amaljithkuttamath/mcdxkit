@@ -224,3 +224,35 @@ test('outputs render the Mathcad file the engineer downloads',async()=>{
   expect(calls.find(c=>c.path==='/api/documents/run-file')?.data).toEqual({project:'c'.repeat(32),run:'r2'});
   expect(calls.find(c=>c.path==='/api/view'&&c.data?.id==='delivered')).toBeTruthy();
 });
+
+test('Calculate all sits beside the Calculation picker and pins every calculation in the project',async()=>{
+  const {calls}=scenario({two:true});
+  const button=await screen.findByRole('button',{name:'Calculate all'});
+  expect(screen.getByRole('combobox',{name:'Calculation'}).closest('.task-actions')).toContainElement(button);
+  await userEvent.click(button);
+  await waitFor(()=>expect(calls.find(c=>c.path==='/api/jobs'&&c.data?.action==='calculate_all')?.data).toEqual(
+    expect.objectContaining({project:'c'.repeat(32),action:'calculate_all',payload:{calculations:['d'.repeat(32),'e'.repeat(32)]},request_key:expect.any(String)})));
+});
+
+test('Calculate all is offered only with several calculations and waits for running calculation work',async()=>{
+  scenario();
+  await screen.findByRole('heading',{name:'Calculation inputs'});
+  expect(screen.queryByRole('button',{name:'Calculate all'})).toBeNull();
+  vi.unstubAllGlobals();
+  scenario({two:true,jobs:[{id:'running',action:'calculate_all',state:'running',stage:'Finished 1 of 2 calculations',uncertain:false,
+    activity:[{time:1,message:'Finished 0 of 2 calculations',detail:{finished:0,total:2}},{time:2,message:'Finished 1 of 2 calculations',detail:{finished:1,total:2}}]}]});
+  expect(await screen.findByRole('button',{name:'Calculate all'})).toBeDisabled();
+  const bar=screen.getByRole('progressbar',{name:'Finished 1 of 2 calculations'});
+  expect(bar).toHaveAttribute('value','1');expect(bar).toHaveAttribute('max','2');
+});
+
+test('Outputs keeps a finished Calculate all with a failed calculation visible, naming the failure',async()=>{
+  history.replaceState(null,'','/?view=outputs');
+  scenario({two:true,jobs:[{id:'all',action:'calculate_all',state:'succeeded',stage:'Complete',uncertain:false,result:{total:2,succeeded:1,skipped:0,failed:1,calculations:[
+    {calculation_id:'d'.repeat(32),name:'Loads.txt + Template.mcdx',status:'succeeded',run_id:'r1',error:null},
+    {calculation_id:'e'.repeat(32),name:'Service loads',status:'failed',run_id:null,error:'Synthetic engine failure'}]}}]});
+  const alert=await screen.findByRole('alert');
+  expect(alert).toHaveTextContent('Calculate all: 1 calculated, 0 already calculated, 1 failed');
+  expect(alert).toHaveTextContent('Service loads: Synthetic engine failure');
+  expect(alert).not.toHaveTextContent('Saved');
+});

@@ -18,13 +18,17 @@ from huey import SqliteHuey
 from huey.serializer import Serializer
 from huey.registry import Message
 
-from .documents import DocumentWorkflow, digest, identifier, text
+from .documents import MAX_CALCULATIONS, DocumentWorkflow, digest, identifier, text
 
-ACTIONS = {'ask', 'draft', 'extract', 'extract_offer', 'build', 'calculate', 'ingest', 'index_status'}
+ACTIONS = {'ask', 'draft', 'extract', 'extract_offer', 'build', 'calculate', 'calculate_all', 'ingest', 'index_status'}
+# Local calculations: an interruption leaves nothing uncertain at a remote service.
+LOCAL = ('build', 'calculate', 'calculate_all')
+LOCAL_SQL = '(' + ','.join(f"'{a}'" for a in LOCAL) + ')'
 TERMINAL = {'succeeded', 'failed', 'cancelled'}
 STAGES = {'ask': 'Finding evidence and writing a cited answer', 'draft': 'Preparing a cited design basis',
           'extract': 'Reading selected pages and extracting requirements', 'build': 'Calculating template equations and preparing outputs'}
 STAGES['calculate'] = STAGES['build']
+STAGES['calculate_all'] = 'Calculating the selected calculations one at a time'
 STAGES['extract_offer'] = 'Saving proposed requirements for review'
 STAGES.update(ingest='Submitting documents for indexing', index_status='Checking document indexing')
 # Observed activity types. They map onto AG-UI event families (step, tool call result,
@@ -37,7 +41,7 @@ def activity_detail(detail):
     clean = {}
     for key, value in (detail or {}).items():
         if key in ('query', 'source', 'status', 'extraction_id') and isinstance(value, str): clean[key] = value[:200]
-        elif key in ('passages', 'facts', 'citations', 'unsupported') and type(value) is int and 0 <= value < 10000: clean[key] = value
+        elif key in ('passages', 'facts', 'citations', 'unsupported', 'finished', 'total') and type(value) is int and 0 <= value < 10000: clean[key] = value
         elif key == 'pages' and isinstance(value, list): clean[key] = [p for p in value if type(p) is int and p > 0][:12]
         elif key == 'sources' and isinstance(value, list): clean[key] = [s[:200] for s in value if isinstance(s, str)][:5]
     return clean
@@ -74,6 +78,10 @@ class JobStore:
             chosen = self.flow.draft_calculation(state, result['draft']) if action == 'build' else payload.get('calculation')
             calc = self.flow.require_calculation(state, chosen)
             result['calculation'] = {k: calc.get(k) for k in ('id', 'report_sha256', 'template_sha256', 'options')}
+        if action == 'calculate_all':
+            # Only the pinned calculations: adding another one later never makes this job stale or retargets it.
+            result['calculations'] = [{k: calc.get(k) for k in ('id', 'report_sha256', 'template_sha256', 'options')}
+                                      for calc in (self.flow.require_calculation(state, cid) for cid in payload['calculations'])]
         from .document_clients import ModelConfig
         from .knowledge import VERSION
         from .extraction import MODEL, SCHEMA_VERSION
@@ -92,9 +100,10 @@ class JobStore:
     def submit(self, project, action, payload, request_key):
         identifier(project)
         if action not in ACTIONS or not isinstance(payload, dict): raise ValueError('Unsupported background operation.')
-        fields = {'ask': {'question'}, 'draft': {'request'}, 'extract': {'source', 'pages', 'question'}, 'extract_offer': {'answer'}, 'build': {'draft'}, 'calculate': set(), 'ingest': set(), 'index_status': set()}[action]
+        fields = {'ask': {'question'}, 'draft': {'request'}, 'extract': {'source', 'pages', 'question'}, 'extract_offer': {'answer'}, 'build': {'draft'}, 'calculate': set(), 'calculate_all': set(), 'ingest': set(), 'index_status': set()}[action]
         if set(payload) != fields and not (action == 'ask' and set(payload) == fields | {'parent'}) \
-                and not (action in ('calculate', 'draft') and set(payload) == fields | {'calculation'}):
+                and not (action in ('calculate', 'draft') and set(payload) == fields | {'calculation'}) \
+                and not (action == 'calculate_all' and set(payload) == {'calculations'}):
             raise ValueError('Invalid job fields.')
         if action in ('ask', 'draft'): text(payload[next(iter(fields))], 'Request', 2000)
         if action == 'ask': self.flow.conversation_history(self.flow.get(project), payload.get('parent'))
@@ -111,6 +120,13 @@ class JobStore:
             state = self.flow.get(project)
             if action == 'calculate' or self.flow.calculations(state):
                 payload = {**payload, 'calculation': self.flow.require_calculation(state, payload.get('calculation'))['id']}
+        if action == 'calculate_all':
+            # Pin the exact calculations; omitted means every calculation the project holds now.
+            state = self.flow.get(project); chosen = payload.get('calculations')
+            if chosen is None: chosen = [c['id'] for c in self.flow.calculations(state)] or [self.flow.require_calculation(state)['id']]
+            if not isinstance(chosen, list) or not chosen or len(chosen) > MAX_CALCULATIONS or len(set(map(str, chosen))) != len(chosen):
+                raise ValueError('Choose one or more distinct calculations to calculate.')
+            payload = {'calculations': [self.flow.require_calculation(state, cid)['id'] for cid in chosen]}
         # Only an answer saved in this project with a proposal can be confirmed (unknown/foreign IDs fail).
         if action == 'extract_offer': self.flow.extraction_offer(self.flow.get(project), payload['answer'])
         key = text(request_key, 'Request identity', 160)
@@ -178,9 +194,10 @@ class JobStore:
         db.execute("UPDATE jobs SET state='succeeded',stage='Complete',result=?,updated=? WHERE id=?",
                    (json.dumps(result, allow_nan=False), time.time(), jid))
 
-    def workflow(self, jid, token):
+    def workflow(self, jid, token, publish=True):
+        # Without publish, saved records do not finish the job (calculate_all saves one run per calculation).
         return DocumentWorkflow(self.root, guard=lambda db: self.guard(db, jid, token),
-                                publish=lambda db, result: self.publish(db, jid, token, result),
+                                publish=(lambda db, result: self.publish(db, jid, token, result)) if publish else None,
                                 progress=lambda message: self.stage(jid, token, message),
                                 activity=lambda kind, message, detail: self.stage(jid, token, message, kind, detail))
 
@@ -214,7 +231,7 @@ class JobStore:
     def cancel(self, jid):
         self.get(jid)
         with self.flow.connection() as db:
-            db.execute("UPDATE jobs SET state='cancelled',stage='Cancelled',updated=?,uncertain=(action NOT IN ('build','calculate') AND state='running') WHERE id=? AND state IN ('queued','running')",
+            db.execute(f"UPDATE jobs SET state='cancelled',stage='Cancelled',updated=?,uncertain=(action NOT IN {LOCAL_SQL} AND state='running') WHERE id=? AND state IN ('queued','running')",
                        (time.time(), jid))
         return self.public(self.get(jid))
 
@@ -242,7 +259,7 @@ class JobStore:
 
     def recover(self):
         with self.flow.connection() as db:
-            db.execute("UPDATE jobs SET state='failed',stage='Interrupted',error=?,uncertain=(action NOT IN ('build','calculate')),updated=? WHERE state='running' AND updated<?",
+            db.execute(f"UPDATE jobs SET state='failed',stage='Interrupted',error=?,uncertain=(action NOT IN {LOCAL_SQL}),updated=? WHERE state='running' AND updated<?",
                        ('Worker interrupted. No automatic retry; a remote request may have completed. Inspect saved results before starting again.', time.time(), time.time()-60))
 
     def dispatch(self):
@@ -308,7 +325,9 @@ def supervise(root, jid):
     try:
         child = subprocess.Popen([sys.executable, '-m', 'mcdxkit.jobs', '--run', str(root), jid, token],
                                  stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=os.name == 'posix')
-        deadline = time.monotonic() + 600
+        job = store.get(jid)
+        # calculate_all runs its calculations in sequence; each gets the single-calculation allowance.
+        deadline = time.monotonic() + 600 * (len(job['payload']['calculations']) if job['action'] == 'calculate_all' else 1)
         while child.poll() is None:
             if STOP.is_set() or store.get(jid)['state'] == 'cancelled' or time.monotonic() > deadline:
                 terminate(child); break
@@ -316,28 +335,29 @@ def supervise(root, jid):
     finally:
         if child is not None: terminate(child)
         store.fail(jid, token, 'Worker interrupted. No automatic retry; inspect the project before trying again.',
-                   uncertain=store.get(jid)['action'] not in ('build', 'calculate'))
+                   uncertain=store.get(jid)['action'] not in LOCAL)
 
 
 def execute(root, jid, token):
     store = JobStore(root)
     try:
         job = store.validate_snapshot(jid, token)
-        flow = store.workflow(jid, token); payload = job['payload']; pid = job['project']
         action = job['action']
+        flow = store.workflow(jid, token, publish=action != 'calculate_all'); payload = job['payload']; pid = job['project']
         if action == 'ask': result = flow.ask(pid, payload['question'], parent=payload.get('parent'))
         elif action == 'draft': result = flow.draft(pid, payload['request'], calculation=payload.get('calculation'))
         elif action == 'extract': result = flow.extract(pid, payload['source'], payload['pages'], payload['question'])
         elif action == 'extract_offer': result = flow.accept_extraction_offer(pid, payload['answer'])
         elif action == 'ingest': result = flow.ingest(pid)
         elif action == 'index_status': result = flow.status(pid)
+        elif action == 'calculate_all': result = flow.calculate_all(pid, payload['calculations'])
         else: result = flow.build(pid, payload.get('draft'), payload.get('calculation'))
         # New records publish atomically with the job. Cached extraction has no new record.
         if store.get(jid)['state'] == 'running': store.complete(jid, token, result)
     except Exception as exc:
         # Provider transport errors are sanitized at the HTTP client boundary.
         message = str(exc) if isinstance(exc, ValueError) else 'Operation failed. Inspect the input files and service configuration.'
-        store.fail(jid, token, message, uncertain=store.get(jid)['action'] not in ('build', 'calculate'))
+        store.fail(jid, token, message, uncertain=store.get(jid)['action'] not in LOCAL)
 
 
 def worker(root, parent=None, channel='batch'):
