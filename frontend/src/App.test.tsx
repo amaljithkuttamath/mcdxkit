@@ -4,7 +4,7 @@ import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
 import {test,expect,vi,beforeEach,afterEach} from 'vitest';
 import App from './App';
 
-beforeEach(()=>{history.replaceState(null,'','/');});
+beforeEach(()=>{history.replaceState(null,'','/');localStorage.clear();});
 afterEach(()=>{vi.unstubAllGlobals();});
 
 test('project tasks stay central and original sources open only on demand', async()=>{
@@ -261,11 +261,15 @@ test('Outputs summarises the latest Calculate all, names failures and marks them
   expect(screen.getByRole('alert')).toHaveTextContent('Synthetic engine failure');
   const picker=screen.getByRole('combobox',{name:'Calculation'});
   expect([...picker.querySelectorAll('option')].map(o=>o.textContent)).toEqual(['Loads.txt + Template.mcdx · calculated','Service loads · failed','+ New calculation']);
-  // A row opens its calculation; Dismiss hides the summary.
+  // Only failures are listed until the engineer expands the summary, so a long project never buries its outputs.
+  expect(within(summary).queryByRole('button',{name:'Loads.txt + Template.mcdx'})).toBeNull();
+  await userEvent.click(within(summary).getByRole('button',{name:'Show all 2'}));
+  // A row opens its calculation; Dismiss hides the summary, also after a reload.
   await userEvent.click(within(summary).getByRole('button',{name:'Loads.txt + Template.mcdx'}));
   expect(picker).toHaveValue('d'.repeat(32));
   await userEvent.click(within(summary).getByRole('button',{name:'Dismiss'}));
   expect(screen.queryByRole('region',{name:'Calculate all results'})).toBeNull();
+  expect(JSON.parse(localStorage.getItem('mcdxkit.dismissed-calculate-all')||'[]')).toEqual(['all']);
 });
 
 test('a fully successful Calculate all still leaves a summary',async()=>{

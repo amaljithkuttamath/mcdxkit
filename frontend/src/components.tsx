@@ -1,3 +1,4 @@
+import {useState} from 'react';
 import {Button, Checkbox} from 'react-aria-components';
 import type {CalculateAllResult, Fact, Job, Source} from './types';
 
@@ -16,16 +17,19 @@ export function JobStatus({job,onCancel}:{job:Job;onCancel:()=>void}) {
 }
 
 // Outcome of the latest Calculate all, one row per calculation. Finishing the job is not the same as every
-// calculation succeeding, so failures stay named here until the engineer dismisses the summary.
+// calculation succeeding, so failures stay listed; the full list is collapsed so it never buries the outputs.
 export function CalculateAllSummary({job,current,onSelect,onDismiss}:{job:Job;current?:string;onSelect:(id:string)=>void;onDismiss:()=>void}) {
   const result=job.result as CalculateAllResult;
+  const [expanded,setExpanded]=useState(false);
+  const failed=result.calculations.filter(c=>c.status==='failed');
+  const rows=expanded?result.calculations:failed;
   return <section className={'batch-summary'+(result.failed?' has-failures':'')} aria-label="Calculate all results">
     <div className="batch-summary-head"><div><strong>Calculate all · {result.succeeded} calculated, {result.skipped} already calculated, {result.failed} failed</strong>
       {result.skipped>0&&<p>Already calculated: a saved run with the same inputs and engine was reused, so no duplicate run was made.</p>}</div>
-      <Button onPress={onDismiss}>Dismiss</Button></div>
-    <ul>{result.calculations.map(c=><li key={c.calculation_id} className={c.status}>
+      <div className="row-actions"><Button aria-expanded={expanded} onPress={()=>setExpanded(!expanded)}>{expanded?'Hide calculations':`Show all ${result.total}`}</Button><Button onPress={onDismiss}>Dismiss</Button></div></div>
+    {rows.length>0&&<ul>{rows.map(c=><li key={c.calculation_id} className={c.status}>
       <Button aria-current={c.calculation_id===current?'true':undefined} onPress={()=>onSelect(c.calculation_id)}>{c.name}</Button>
-      <span>{STATUS_LABEL[c.status]}</span>{c.error&&<small role="alert">{c.error}</small>}</li>)}</ul>
+      <span>{STATUS_LABEL[c.status]}</span>{c.error&&<small role="alert">{c.error}</small>}</li>)}</ul>}
   </section>;
 }
 
