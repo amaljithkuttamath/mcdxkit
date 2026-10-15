@@ -139,7 +139,8 @@ test('failed calculation runs never mark the Calculated workflow step complete',
   const last=steps.querySelectorAll('li')[3];
   expect(last).not.toHaveTextContent('done');
   await userEvent.click(screen.getByRole('button',{name:'Ask'}));
-  expect(screen.getByText(/0 calculated runs/)).toBeVisible();
+  // Ask names the project and calculation only; run counts and cases are not repeated there.
+  expect(screen.getByText(/Asking about/)).toHaveTextContent('Asking about Two-file calculation · Loads.txt + Template.mcdx');
 });
 
 
