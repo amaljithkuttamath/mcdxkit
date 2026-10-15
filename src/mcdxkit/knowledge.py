@@ -74,8 +74,10 @@ class KnowledgeAnswer(BaseModel):
     status: Literal['supported', 'partial', 'insufficient', 'conflicted']
     assessment: str = Field(min_length=1, max_length=2000)
     sections: list[AnswerSection] = Field(max_length=12)
-    gaps: list[str] = Field(max_length=30)
-    conflicts: list[str] = Field(max_length=20)
+    # Empty lists are the common case; models (DeepSeek V4.1 Flash, observed 2026-10-15) omit them, and a
+    # missing empty list must not reject an otherwise valid answer. A 'conflicted' status still needs conflicts.
+    gaps: list[str] = Field(default_factory=list, max_length=30)
+    conflicts: list[str] = Field(default_factory=list, max_length=20)
     kind: Literal['research', 'workflow'] = 'research'
     actions: list[Literal['add_files', 'index_documents', 'extract_requirements', 'review_requirements',
                           'map_inputs', 'calculate', 'view_outputs']] = Field(default_factory=list, max_length=4)
@@ -990,8 +992,12 @@ class KnowledgeAgent:
                     parser = PydanticOutputParser(pydantic_object=KnowledgeAnswer)
                     # Prompt + local parser also works for tool-capable providers that
                     # do not advertise OpenAI JSON-mode support (including North Mini).
+                    # Research is over: tools are closed here, so the reply must be the answer itself. Without this
+                    # a model told by the context to research again replies with intent prose instead of JSON.
                     formatted = model.invoke([
-                        {'role': 'system', 'content': SYSTEM + '\nReturn JSON only. ' + parser.get_format_instructions()},
+                        {'role': 'system', 'content': SYSTEM + '\nFINAL STEP: research is complete and no tools are available. '
+                                                               'Write the final answer from retrieved_evidence only. Return JSON only. '
+                                                               + parser.get_format_instructions()},
                         {'role': 'user', 'content': json.dumps({'context': context, 'retrieved_evidence': list(evidence.values())}, allow_nan=False)}],
                         config={'callbacks': []})
                     parsed = parser.parse(formatted.content)

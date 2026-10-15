@@ -92,6 +92,29 @@ class KnowledgeTests(unittest.TestCase):
         result = KnowledgeAgent(model=model).answer({'request': 'Limit?'}, lambda _: [{'id': 'E1', 'text': 'New walls: 2 inches.'}])
         self.assertEqual(result['sections'][0]['evidence_ids'], ['E1'])
 
+    def test_answer_omitting_empty_gaps_and_conflicts_is_accepted_without_a_formatting_call(self):
+        # Observed with DeepSeek V4.1 Flash: a complete cited answer without the empty lists was rejected,
+        # then the formatting fallback failed too. No further scripted turn exists, so a fallback would error.
+        from mcdxkit.knowledge import KnowledgeAgent
+        bare = {k: v for k, v in answer().items() if k not in ('gaps', 'conflicts')}
+        model = ScriptedModel(messages=iter([call('search_documents', {'query': 'new walls'}, 1), call('KnowledgeAnswer', bare, 2)]))
+        result = KnowledgeAgent(model=model).answer({'request': 'Limit?'}, lambda _: [{'id': 'E1', 'text': 'New walls: 2 inches.'}])
+        self.assertEqual((result['gaps'], result['conflicts']), ([], []))
+        self.assertEqual(result['sections'][0]['evidence_ids'], ['E1'])
+
+    def test_formatting_fallback_tells_the_model_research_is_over(self):
+        import json
+        from mcdxkit.knowledge import KnowledgeAgent
+        seen = []
+        class Recording(ScriptedModel):
+            def invoke(self, messages, *args, **kwargs):
+                seen.append(messages); return super().invoke(messages, *args, **kwargs)
+        model = Recording(messages=iter([call('search_documents', {'query': 'new walls'}, 1),
+                                         AIMessage(content='I will research the unconfirmed statements again.'),
+                                         AIMessage(content=json.dumps(answer()))]))
+        KnowledgeAgent(model=model).answer({'request': 'Recheck'}, lambda _: [{'id': 'E1', 'text': 'New walls: 2 inches.'}])
+        self.assertIn('no tools are available', seen[-1][0]['content'])
+
     def test_empty_evidence_cannot_be_answered_from_model_memory(self):
         from mcdxkit.knowledge import KnowledgeAgent
         model = ScriptedModel(messages=iter([call('KnowledgeAnswer', answer(), 1)]))
