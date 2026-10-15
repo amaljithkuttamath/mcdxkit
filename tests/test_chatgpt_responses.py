@@ -22,8 +22,10 @@ class ResponsesContract(unittest.TestCase):
         self.tmp=tempfile.TemporaryDirectory(); self.addCleanup(self.tmp.cleanup)
         self.chat=ChatGPTResponses(model='test-model',workspace=self.tmp.name,account='0000000000000000')
         self.requests=[];self.events=[completed()];self.status=200;self.error={};self.sdk_options=[];self.script=None
-        self.enterContext(patch('mcdxkit.chatgpt_responses.ChatGPTAccounts.access_token',return_value='fake-token'))
-        self.enterContext(patch('openai.OpenAI',side_effect=self.sdk))
+        for replacement in (patch('mcdxkit.chatgpt_responses.ChatGPTAccounts.access_token',return_value='fake-token'),
+                            patch('openai.OpenAI',side_effect=self.sdk)):
+            replacement.start()
+            self.addCleanup(replacement.stop)
 
     def sdk(self, **kwargs):
         self.sdk_options.append(kwargs)

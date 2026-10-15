@@ -1,12 +1,12 @@
 """Independent boundary evaluations; no service calls or engineering fixtures."""
-import contextlib
-import io
-import json
+from pathlib import Path
+import sys
+import tempfile
 import unittest
 from unittest.mock import patch
 
 from mcdxkit.documents import DocumentWorkflow
-from mcdxkit.extraction import _worker
+from mcdxkit.extraction import read_pages
 
 
 class RetrievalContract(unittest.TestCase):
@@ -33,16 +33,30 @@ class RetrievalContract(unittest.TestCase):
         self.assertEqual(evidence, [])
 
     def read_window(self, pages, count=8):
-        class Page:
-            def __init__(self, number): self.number = number
-            def extract_text(self): return f'Original page {self.number}: requirement context with enough text.'
-        class PDF:
-            is_encrypted = False
-            def __init__(self, *args, **kwargs): self.pages = [Page(i+1) for i in range(count)]
-        out = io.StringIO()
-        with patch('pypdf.PdfReader', PDF), patch('sys.argv', ['worker', 'source.pdf', json.dumps(pages), 'neighbors']), contextlib.redirect_stdout(out):
-            _worker()
-        return json.loads(out.getvalue())
+        from pypdf import PdfWriter
+        from pypdf.generic import DecodedStreamObject, DictionaryObject, NameObject
+        # Exercise the production subprocess boundary. Calling _worker() here
+        # would lower the entire Linux test runner's hard address-space limit.
+        with tempfile.TemporaryDirectory() as folder, PdfWriter() as writer:
+            font = DictionaryObject({NameObject('/Type'): NameObject('/Font'),
+                                     NameObject('/Subtype'): NameObject('/Type1'),
+                                     NameObject('/BaseFont'): NameObject('/Helvetica')})
+            for number in range(1, count + 1):
+                page = writer.add_blank_page(width=612, height=792)
+                page[NameObject('/Resources')] = DictionaryObject({NameObject('/Font'): DictionaryObject({NameObject('/F1'): font})})
+                stream = DecodedStreamObject()
+                stream.set_data(f'BT /F1 12 Tf 50 740 Td (Original page {number}: requirement context with enough text.) Tj ET'.encode())
+                page[NameObject('/Contents')] = stream
+            path = Path(folder) / 'source.pdf'
+            writer.write(path)
+            return read_pages(path, pages, neighbors=True)
+
+    @unittest.skipUnless(sys.platform == 'linux', 'Linux PDF worker memory isolation')
+    def test_pdf_limits_do_not_change_parent_process_limits(self):
+        import resource
+        before = resource.getrlimit(resource.RLIMIT_AS)
+        self.assertIn('Original page 3:', self.read_window([3])[1]['text'])
+        self.assertEqual(resource.getrlimit(resource.RLIMIT_AS), before)
 
     def test_adjacent_context_preserves_original_page_numbers_and_file_bounds(self):
         self.assertEqual([r['page'] for r in self.read_window([1])], [1,2])
