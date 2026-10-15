@@ -148,7 +148,9 @@ def audit_citations(sections, evidence):
 # /5: a quote may hold a whole long engineering sentence (MAX_QUOTE_CHARS 400 -> 2000), so the required
 #     subject, qualifiers and conditions fit; explicit per-statement and per-report quote character caps bound
 #     the report's size. Over-cap reports fail closed; nothing is truncated or repaired.
-GROUNDING_VERSION = 'grounding/6'
+# /7: a negation inside a source parenthetical counts only for a clause it is relevant to (a table row's
+#     "(... excluded)" no longer negates every other row), and "including but not limited to" is not a negation.
+GROUNDING_VERSION = 'grounding/7'
 MAX_STATEMENTS = 40
 MAX_GROUNDING_CHARS = 90_000
 MAX_QUOTES = 8                  # per statement: enough for compound clauses and several inline citations
@@ -327,8 +329,13 @@ def _normal(value):
     return _PROHIBITION.sub(' prohibited ', _plain(value))
 
 
+# An open list ("including, but not limited to,") widens a list; it negates nothing. Bare "not limited to" stays a negation.
+_OPEN_LIST = re.compile(r'\binclud(?:e|es|ed|ing),?\s+but\s+(?:is\s+|are\s+)?not\s+limited\s+to\b')
+_PARENTHETICAL = re.compile(r'\([^()]*\)')      # innermost balanced group; unbalanced text stays in the sentence
+
+
 def _negated(value):
-    value = _normal(value)
+    value = _OPEN_LIST.sub(' ', _normal(value))
     for pattern, _ in _BOUNDS: value = re.sub(pattern, ' ', value)     # "shall not exceed" is a limit, not a negation
     return bool(_NEGATION.search(value))
 
@@ -366,6 +373,21 @@ def _scope_reasons(claim, quotes, rows):
     return list(dict.fromkeys(reasons))
 
 
+def _source_negated(sentence, words):
+    """Negation of a source sentence as it applies to one statement clause (content words `words`).
+
+    A negation outside parentheses governs the whole sentence. A negation inside a balanced parenthetical
+    ("(skin friction excluded)") counts only when that parenthetical is relevant to the clause: it shares a
+    content word with it, or it has a digit, a listed qualifier or no content word of its own (fail closed)."""
+    plain = _normal(sentence)
+    if _negated(_PARENTHETICAL.sub(' ', plain)): return True
+    for inner in _PARENTHETICAL.findall(plain):
+        if not _negated(inner): continue
+        own = _content(_NEGATION.sub(' ', inner))
+        if re.search(r'\d', inner) or any(_qualifiers(inner).values()) or not own or own & words: return True
+    return False
+
+
 def _sentence_problems(info, sentence):
     """Why one source sentence cannot be the local assertion for a statement clause."""
     found, out = _qualifiers(sentence), []
@@ -377,7 +399,7 @@ def _sentence_problems(info, sentence):
                        f'sentence that states it ({", ".join(sorted(names))})')
         elif not wanted and group != 'obligation' and info['numbers']:
             out.append(f'it drops the source qualifier "{", ".join(sorted(names))}" that applies to the value')
-    if _negated(sentence) != info['negated']: out.append('its negation differs from the source sentence that states it')
+    if _source_negated(sentence, info['words']) != info['negated']: out.append('its negation differs from the source sentence that states it')
     if info['numbers']:
         dropped = [f'{n} {u}' for n, u in _quantities(sentence) if (n, u) not in info['kept']]
         if dropped: out.append('it drops a condition stated with the value (' + ', '.join(dropped) + ')')

@@ -89,6 +89,58 @@ class GroundingContract(unittest.TestCase):
         self.assert_withheld(self.run_gate('The limit for existing walls is 2 inches over 50 years [E1].',
                                           SOURCE + ' Existing walls require a separate assessment.'))
 
+    # Negation binding. A source chunk without sentence punctuation (a table) is one source sentence, so a negation in
+    # one row must not negate the others; flips of a negation that does govern the clause must still be withheld.
+    TABLE = ('Table 5-2 Pile Acceptance Criteria Pile Type Method A Method B '
+             'Driven Pile Load Test Required with Safety Factor ≥ 2.5 Restrike Factor ≥ 2.0 '
+             'Micropile Load Test Required (skin friction excluded) Prohibited '
+             'Helical Pile Load Test Required Prohibited')
+
+    def assert_negation_rejected(self, body, source):
+        result = self.run_gate(body, source)
+        self.assert_withheld(result)
+        self.assertTrue(any('negation' in reason for row in result[0]['_unconfirmed'] for reason in row['reasons']),
+                        result[0]['_unconfirmed'])
+
+    def test_negation_in_another_table_row_does_not_reject_a_row(self):
+        for body in ['Driven piles require a load test with a safety factor ≥ 2.5 under Method A [E1].',
+                     'Helical piles require a load test under Method A and are prohibited under Method B [E1].',
+                     'Micropiles require a load test with skin friction excluded under Method A [E1].']:
+            with self.subTest(body=body):
+                grounding, sections, *_ = self.run_gate(body, self.TABLE)
+                self.assertEqual(grounding['status'], 'grounded', grounding.get('_unconfirmed'))
+                self.assertIn(body.removesuffix(' [E1].'), sections[0]['body'])
+
+    def test_open_list_is_not_a_negation(self):
+        for wording in ['including but not limited to', 'including, but not limited to,', 'which includes but is not limited to']:
+            with self.subTest(wording=wording):
+                source = f'The Contractor shall supply piles, {wording} driven piles, micropiles and helical piles, as shown on the plans.'
+                grounding, sections, *_ = self.run_gate('The Contractor shall supply driven piles, micropiles and helical piles '
+                                                        'as shown on the plans [E1].', source)
+                self.assertEqual(grounding['status'], 'grounded', grounding.get('_unconfirmed'))
+
+    def test_negation_flips_are_still_withheld(self):
+        cases = [
+            # the parenthetical negation is about this clause's content
+            ('Micropiles require a load test that includes skin friction under Method A [E1].', self.TABLE),
+            ('Splices are allowed for H-piles [E1].', 'Splices are allowed (not for H-piles).'),
+            # a parenthetical with only a qualifier, a number or no content of its own governs the clause
+            ('Pile splices are permitted in new piles [E1].', 'Pile splices are permitted (new excluded).'),
+            ('Pile splices are permitted for 2 piles per bent [E1].', 'Pile splices are permitted for 2 piles per bent (not 3).'),
+            ('Pile splices are permitted [E1].', 'Pile splices are permitted (not).'),
+            # an added negation is not excused by an unrelated parenthetical negation
+            ('Driven piles do not require a load test with a safety factor ≥ 2.5 [E1].', self.TABLE),
+            # main-clause negation, an unbalanced parenthesis, and bare "not limited to" still govern
+            ('Piles shall be driven to refusal [E1].', 'Piles shall not be driven to refusal.'),
+            ('Piles shall be driven to refusal and jetted [E1].', 'Piles shall be driven to refusal (not jetted.'),
+            ('The axial load is limited to 50 kips [E1].', 'The axial load is not limited to 50 kips.'),
+            ('Pile length is limited to the plan length [E1].', 'Pile length is not limited to the plan length.'),
+            ('Piles, including but not limited to H-piles, shall be spliced [E1].',
+             'Piles, including but not limited to H-piles, shall not be spliced.'),
+        ]
+        for body, source in cases:
+            with self.subTest(body=body): self.assert_negation_rejected(body, source)
+
     def test_uncited_prose_cannot_use_non_claim_verdict_to_bypass_grounding(self):
         self.assert_withheld(self.run_gate('The engineer has approved this design.', verifier='not_a_claim'))
 
