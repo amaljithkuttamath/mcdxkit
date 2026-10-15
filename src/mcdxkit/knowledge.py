@@ -751,7 +751,7 @@ class KnowledgeAgent:
                 raise ValueError('Continue with ChatGPT and choose a ChatGPT model in Services before asking.')
             return ChatGPTResponses(model=self.config.chatgpt_model, workspace=str(self.workspace), account=self.chatgpt_account)
         from langchain_openai import ChatOpenAI
-        from .document_clients import OpenRouter
+        from .document_clients import OpenRouter, provider_route
         # Check the key first, so a missing key gets the actionable message rather than the generic client error.
         if not self.config.router_key:
             raise ValueError('OpenRouter is not configured, so nothing was sent. In the browser, open Services and add an OpenRouter API key. '
@@ -764,7 +764,7 @@ class KnowledgeAgent:
         return ChatOpenAI(model=self.config.model, api_key=self.config.router_key,
                           base_url='https://openrouter.ai/api/v1', http_client=transport,
                           timeout=60, max_retries=0, temperature=0, max_tokens=max_tokens,
-                          extra_body={'provider': {'allow_fallbacks': False, 'data_collection': 'deny'},
+                          extra_body={'provider': provider_route(self.config.model),
                                       'reasoning': reasoning})
 
     def verify(self, statements, evidence):

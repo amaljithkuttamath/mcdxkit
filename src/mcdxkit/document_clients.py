@@ -16,6 +16,22 @@ from dotenv import dotenv_values
 # Small synthetic evaluation, not a guarantee of provider availability or engineering accuracy.
 # Only recommend entries that are still present and free in the authenticated catalog.
 DEFAULT_ANSWER_MODEL = 'cohere/north-mini-code:free'
+# Paid models are allowed only by name, each pinned to one provider with fallbacks off, no data collection
+# and a per-million-token price cap (USD). Requirement extraction and Ask share this route.
+PINNED_PAID_MODELS = {
+    'deepseek/deepseek-v4.1-flash': {'only': ['deepinfra/fp8'], 'allow_fallbacks': False, 'data_collection': 'deny',
+                                     'require_parameters': True, 'max_price': {'prompt': 0.5, 'completion': 1}},
+}
+
+
+def allowed_model(model):
+    """A specific free model, or a pinned paid one. Random routers and other paid models are refused."""
+    return isinstance(model, str) and (model in PINNED_PAID_MODELS or bool(re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.:-]+:free', model)))
+
+
+def provider_route(model):
+    """OpenRouter `provider` settings for a model: the pinned route for a paid one, otherwise no fallbacks."""
+    return dict(PINNED_PAID_MODELS[model]) if model in PINNED_PAID_MODELS else {'allow_fallbacks': False, 'data_collection': 'deny'}
 MODEL_PREFERENCES = {
     'text': (DEFAULT_ANSWER_MODEL,),
     'embeddings': ('nvidia/llama-nemotron-embed-vl-1b-v2:free', 'nvidia/nemotron-3-embed-1b:free'),
@@ -116,9 +132,9 @@ class RAGFlow(HTTPClient):
 
 class OpenRouter(HTTPClient):
     def __init__(self, key, model):
-        if not isinstance(model, str) or not re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.:-]+:free', model):
-            raise ValueError('Choose a specific free answer model (provider/model:free) in Services, or set MCDXKIT_OPENROUTER_MODEL from the command line. '
-                             'Paid models and random routers are disabled.')
+        if not allowed_model(model):
+            raise ValueError('Choose a specific free answer model (provider/model:free) or a listed paid model in Services, '
+                             'or set MCDXKIT_OPENROUTER_MODEL from the command line. Other paid models and random routers are disabled.')
         super().__init__('https://openrouter.ai/api/v1', key)
         self.model = model
 
@@ -216,7 +232,7 @@ class ModelConfig:
         return RAGFlow(self.url, self.rag_key, self.embedding, self.reranker)
 
     def available_models(self, key=''):
-        """Discover account-visible free text models without persisting a supplied key."""
+        """Discover account-visible free text models, plus pinned paid ones, without persisting a supplied key."""
         return self._catalog(key, '/models/user', 'text')
 
     def available_embeddings(self, key=''):
@@ -234,18 +250,22 @@ class ModelConfig:
         for item in catalog['data']:
             if not isinstance(item, dict): continue
             identifier, pricing, architecture = item.get('id'), item.get('pricing'), item.get('architecture')
-            if not isinstance(identifier, str) or not re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.:-]+:free', identifier): continue
+            pinned = modality == 'text' and isinstance(identifier, str) and identifier in PINNED_PAID_MODELS
+            if not pinned and (not isinstance(identifier, str) or not re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.:-]+:free', identifier)): continue
             if not isinstance(architecture, dict) or modality not in (architecture.get('output_modalities') or []): continue
             if modality == 'embeddings' and 'text' not in (architecture.get('input_modalities') or []): continue
             if not isinstance(pricing, dict) or not {'prompt', 'completion'} <= pricing.keys(): continue
             try:
-                if any(float(value) != 0 for value in pricing.values()): continue
+                if not pinned and any(float(value) != 0 for value in pricing.values()): continue
             except (TypeError, ValueError, OverflowError):
                 continue
             name = item.get('name')
             context = item.get('context_length')
             models[identifier] = {'id': identifier, 'name': name[:200] if isinstance(name, str) else identifier,
                                   'context_length': context if isinstance(context, int) and context > 0 else None}
+            if pinned:
+                route = PINNED_PAID_MODELS[identifier]
+                models[identifier].update(paid=True, recommendation='Paid · billed to your OpenRouter key · ' + route['only'][0].split('/')[0] + ' only, no fallback')
         preferences = MODEL_PREFERENCES[modality]
         for rank, identifier in enumerate(preferences):
             if identifier in models:
@@ -254,7 +274,7 @@ class ModelConfig:
         return {'models': sorted(models.values(), key=lambda item: (
                     preferences.index(item['id']) if item['id'] in preferences else len(preferences),
                     item['name'].casefold(), item['id'])),
-                'free_only': True}
+                'free_only': not any(m.get('paid') for m in models.values())}
 
     def writer(self):
         if not self.router_key: raise ValueError('OpenRouter is not configured, so nothing was sent. In the browser, open Services and add an OpenRouter API key. '

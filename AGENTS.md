@@ -94,7 +94,7 @@ Keep model integrations in `document_clients.py` and durable authoring/review/pa
 
 Sign in with ChatGPT (`chatgpt.py`, `chatgpt_responses.py`, [guide](docs/chatgpt.md)) is local-loopback only. Keep tokens and the authorize URL server-side, follow the documented OAuth/Responses preview contract, never read other apps' credentials, never fall back to another provider and never retry inference automatically. Test state/nonce/PKCE, denial, replay, wrong account/client, token-file permissions and no-token API responses.
 
-Browser service settings are shared workspace overrides, stored only in `.documents/.credentials.json`. Never return secret values, put them in browser storage, include them in exports or bypass session/CSRF checks. Test blank-key preservation, endpoint changes requiring a fresh key, free-only model validation and permissions.
+Browser service settings are shared workspace overrides, stored only in `.documents/.credentials.json`. Never return secret values, put them in browser storage, include them in exports or bypass session/CSRF checks. Test blank-key preservation, endpoint changes requiring a fresh key, free-only model validation (the only paid exception is the pinned model in `PINNED_PAID_MODELS`, routed to one provider with no fallback) and permissions.
 
 A document library must support create/add/index/ask without a raw report or template. Keep cited answers separate from calculation drafts. Connecting immutable calculation snapshots preserves library/index identities and answers. Test the no-input path, failed/repeated connections, historical answers, and linked drafts using selected load context; library answers cannot propose template inputs.
 

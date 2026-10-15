@@ -5,7 +5,7 @@ import subprocess
 import sys
 import time
 
-from .document_clients import HTTPClient
+from .document_clients import HTTPClient, provider_route
 
 MODEL = 'deepseek/deepseek-v4.1-flash'
 SCHEMA_VERSION = 'requirements/3'
@@ -116,8 +116,7 @@ class RequirementExtractor(HTTPClient):
         started = time.monotonic()
         response = self.request('POST', '/chat/completions', {
             'model': self.model, 'temperature': 0, 'max_tokens': 16384, 'reasoning': {'enabled': False},
-            'provider': {'only': ['deepinfra/fp8'], 'allow_fallbacks': False, 'data_collection': 'deny',
-                         'require_parameters': True, 'max_price': {'prompt': 0.5, 'completion': 1}},
+            'provider': provider_route(self.model),
             'response_format': {'type': 'json_schema', 'json_schema': {'name': 'source_requirements', 'strict': True, 'schema': schema}},
             'messages': [{'role': 'system', 'content': instruction}, {'role': 'user', 'content': json.dumps(context)}]})
         try:

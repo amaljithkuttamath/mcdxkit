@@ -81,7 +81,7 @@ function Picker({disabled,onServices,onPendingChange}:PickerProps) {
     <Popover className="cx-popover cx-model-pop" placement="top start" offset={8}>
       <Dialog className="cx-dialog">
         <Heading slot="title" className="cx-pop-heading">Answer model</Heading>
-        <p className="cx-pop-sub">{provider==='chatgpt'?`Models listed for your ChatGPT account${account?.label?` (${account.label})`:''}. A model is confirmed only when an answer completes.`:'Free OpenRouter models available to the saved key.'}</p>
+        <p className="cx-pop-sub">{provider==='chatgpt'?`Models listed for your ChatGPT account${account?.label?` (${account.label})`:''}. A model is confirmed only when an answer completes.`:'Free OpenRouter models available to the saved key, plus pinned paid models billed to it.'}</p>
         {blocker?<div className="cx-pop-state"><p>{blocker}</p>{onServices&&<Button className="cx-secondary" onPress={()=>{setOpen(false);onServices();}}>Open Services</Button>}</div>
           :provider==='chatgpt'&&chatgpt.isPending?<p className="cx-pop-state" role="status">Checking your ChatGPT account…</p>
           :chatgpt.isError?<div className="cx-pop-state" role="alert"><p>{chatgpt.error.message}</p><Button className="cx-secondary" onPress={()=>void chatgpt.refetch()}>Try again</Button></div>
