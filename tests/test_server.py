@@ -72,6 +72,34 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(self.request('GET','/api/chatgpt')[1]['accounts'],[])
         self.assertEqual(self.request('POST','/api/chatgpt/connect',{'project':'f'*32,'view':'ask'})[0],400)
 
+    def test_chatgpt_return_can_load_app_shell_with_cross_site_navigation_metadata(self):
+        # Browsers retain cross-site metadata through the OAuth callback's 303
+        # redirect. The final app shell is a top-level document navigation.
+        headers = {'Sec-Fetch-Site': 'cross-site', 'Sec-Fetch-Mode': 'navigate', 'Sec-Fetch-Dest': 'document'}
+        for result in ('connected', 'plan', 'failed'):
+            with self.subTest(result=result):
+                status, body = self.request('GET', '/?view=ask&chatgpt=' + result, headers=headers, authenticated=False)
+                self.assertEqual(status, 200)
+                self.assertIn(b'<div id="root">', body)
+
+    def test_cross_site_app_navigation_does_not_authorize_fetches_frames_or_api_requests(self):
+        navigation = {'Sec-Fetch-Site': 'cross-site', 'Sec-Fetch-Mode': 'navigate', 'Sec-Fetch-Dest': 'document'}
+        cases = [
+            ('GET', '/', {'Sec-Fetch-Site': 'cross-site'}),
+            ('GET', '/', {**navigation, 'Sec-Fetch-Mode': 'cors'}),
+            ('GET', '/', {**navigation, 'Sec-Fetch-Dest': 'iframe'}),
+            ('GET', '/', {**navigation, 'Origin': 'https://evil.test'}),
+            ('GET', '/', {**navigation, 'Host': 'evil.test'}),
+            ('POST', '/', navigation),
+            ('GET', '/api/session', navigation),
+            ('GET', '/api/chatgpt', navigation),
+            ('POST', '/api/chatgpt/connect', navigation),
+            ('GET', '/auth/start?handle=wrong', navigation),
+        ]
+        for method, path, headers in cases:
+            with self.subTest(method=method, path=path, headers=headers):
+                self.assertEqual(self.request(method, path, headers=headers)[0], 403)
+
     def test_background_jobs_require_session_and_remain_inspectable(self):
         status, project = self.request('POST', '/api/documents/create', {'title': 'Background example'})
         self.assertEqual(status, 200)

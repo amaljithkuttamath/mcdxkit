@@ -17,6 +17,13 @@ def completed(output=None, status='completed'):
         'usage':{'input_tokens':10,'output_tokens':4,'total_tokens':14}}}
 
 
+def streamed_completion(output):
+    terminal = completed()
+    terminal['response']['output'] = []
+    return [*({'type': 'response.output_item.done', 'output_index': index, 'item': item}
+              for index, item in enumerate(output)), terminal]
+
+
 class ResponsesContract(unittest.TestCase):
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory(); self.addCleanup(self.tmp.cleanup)
@@ -83,6 +90,57 @@ class ResponsesContract(unittest.TestCase):
         items=self.requests[1]['input']
         self.assertTrue(any(i.get('type')=='function_call' and i.get('call_id')=='call_test' for i in items))
         self.assertTrue(any(i.get('type')=='function_call_output' and i.get('output')=='Evidence text' for i in items))
+
+    def test_completed_stream_items_survive_empty_terminal_output(self):
+        message = completed()['response']['output'][0]
+        self.events = streamed_completion([message])
+        self.assertEqual(self.chat.invoke([HumanMessage(content='Hello')]).content, 'Checked answer.')
+
+    def test_streamed_tool_calls_are_available_to_the_real_agent(self):
+        from mcdxkit.document_clients import ModelConfig
+        from mcdxkit.knowledge import KnowledgeAgent
+        from test_knowledge import answer
+        def call(name, args):
+            return {'type': 'function_call', 'name': name, 'namespace': NAMESPACE,
+                    'call_id': 'call_' + name, 'arguments': json.dumps(args)}
+        self.script = [streamed_completion([call('search_documents', {'query': 'wall settlement'})]),
+                       streamed_completion([call('KnowledgeAnswer', answer())])]
+        config = ModelConfig('', '', '', '', 'test:free', provider='chatgpt', chatgpt_model='test-model')
+        agent = KnowledgeAgent(config, workspace=self.tmp.name, chatgpt_account='0000000000000000')
+        searches = []
+        def search(query):
+            searches.append(query)
+            return [{'id': 'E1', 'source_name': 'Public fixture', 'text': 'The limit is 2 inches', 'positions': [[2, 0, 0, 0, 0]]}]
+        self.assertEqual(agent.answer({'request': 'What is the wall settlement limit?'}, search)['status'], 'supported')
+        self.assertEqual(searches, ['wall settlement'])
+        self.assertEqual(len(self.requests), 2)
+
+    def test_done_items_without_successful_completion_are_never_accepted(self):
+        done = streamed_completion(completed()['response']['output'])[:-1]
+        for terminal in ([], [{'type': 'response.failed', 'response': {'status': 'failed'}}],
+                         [{'type': 'response.incomplete', 'response': {'status': 'incomplete'}}]):
+            with self.subTest(terminal=terminal):
+                self.events = done + terminal
+                with self.assertRaises(ChatGPTError):
+                    self.chat.invoke([HumanMessage(content='Hello')])
+
+    def test_streamed_terminal_text_still_obeys_output_budget(self):
+        self.chat.max_output_chars = 4
+        self.events = streamed_completion(completed()['response']['output'])
+        with self.assertRaises(ChatGPTError):
+            self.chat.invoke([HumanMessage(content='Hello')])
+
+    def test_full_terminal_output_is_not_duplicated(self):
+        self.events = streamed_completion(completed()['response']['output'])[:-1] + [completed()]
+        self.assertEqual(self.chat.invoke([HumanMessage(content='Hello')]).content, 'Checked answer.')
+
+    def test_invalid_or_duplicate_completed_item_indexes_fail_closed(self):
+        done = streamed_completion(completed()['response']['output'])[0]
+        for events in ([{**done, 'output_index': -1}, completed()], [done, done, completed()]):
+            with self.subTest(events=events):
+                self.events = events
+                with self.assertRaises(ChatGPTError):
+                    self.chat.invoke([HumanMessage(content='Hello')])
 
     def test_unregistered_tools_foreign_namespace_and_invalid_args_never_execute(self):
         tool={'type':'function','function':{'name':'allowed','parameters':{'type':'object','properties':{}}}}
