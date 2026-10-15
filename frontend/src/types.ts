@@ -9,7 +9,7 @@ export type Audit = {status:'passed'|'warnings'; cited:string[]; unsupported_num
 export type GroundingQuote = {evidence_id:string; text:string};
 export type GroundingVerdict = 'supported'|'unsupported'|'uncertain'|'structural';
 export type GroundingStatement = {id:string; kind:'heading'|'section'|'conflict'; section:number|null; verdict:GroundingVerdict; reasons:string[]; checks_applied?:string[]; anchored?:boolean; text?:string; evidence_ids?:string[]; quotes?:GroundingQuote[]};
-export type Grounding = {version:string; status:'grounded'|'withheld'|'abstained'|'workflow'; draft_withheld?:boolean; method?:string; statements?:GroundingStatement[]; inline_anchored?:number; checked_statements?:number; coverage?:'partial'|'searchable_documents'; scope?:{retrieval?:string; precedence?:string; approval?:string}; meaning?:string};
+export type Grounding = {version:string; status:'grounded'|'withheld'|'abstained'|'workflow'; draft_withheld?:boolean; method?:string; statements?:GroundingStatement[]; inline_anchored?:number; checked_statements?:number; unconfirmed_statements?:number; reason_code?:string; coverage?:'partial'|'searchable_documents'; scope?:{retrieval?:string; precedence?:string; approval?:string}; meaning?:string};
 export type ActivityType ='step'|'search'|'context'|'extraction'|'check';
 export type Activity = {seq?:number; time:number; message:string; type?:ActivityType; detail?:{query?:string;passages?:number;sources?:string[];source?:string;pages?:number[];facts?:number;extraction_id?:string;status?:string;citations?:number;unsupported?:number;finished?:number;total?:number}};
 // Result of a calculate_all job: one row per pinned calculation, in the order calculated.

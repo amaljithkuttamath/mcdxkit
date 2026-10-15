@@ -146,7 +146,7 @@ def audit_citations(sections, evidence):
 # /5: a quote may hold a whole long engineering sentence (MAX_QUOTE_CHARS 400 -> 2000), so the required
 #     subject, qualifiers and conditions fit; explicit per-statement and per-report quote character caps bound
 #     the report's size. Over-cap reports fail closed; nothing is truncated or repaired.
-GROUNDING_VERSION = 'grounding/5'
+GROUNDING_VERSION = 'grounding/6'
 MAX_STATEMENTS = 40
 MAX_GROUNDING_CHARS = 90_000
 MAX_QUOTES = 8                  # per statement: enough for compound clauses and several inline citations
@@ -555,6 +555,40 @@ def verifier_failure_code(exc):
     return 'verifier_failed'
 
 
+_NO_SUPPORT = 'the check did not find it stated in the cited passages'
+UNCONFIRMED_HEADING = 'Confirmed statements'
+
+
+def _confirmed_only(sections, units, results, payload):
+    """Rebuild sections and conflicts from confirmed (or structural) statements only.
+
+    A section keeps its layout lines and confirmed sentences; it is dropped when none of its body statements
+    was confirmed. An unconfirmed heading is replaced by a server label. Evidence IDs shrink to those the kept
+    statements cite or quote, so no dropped statement's sources are presented as support."""
+    keep = {unit['text'] for unit, r in zip(units, results, strict=True) if r['verdict'] in ('supported', 'structural')}
+    by_section: dict = {}
+    for unit, result in zip(units, results, strict=True):
+        if unit['kind'] in ('heading', 'section'): by_section.setdefault(unit['section'], []).append((unit, result))
+    published = []
+    for index, section in enumerate(sections):
+        rows = by_section.get(index, [])
+        body_ok = [(u, r) for u, r in rows if u['kind'] == 'section' and r['verdict'] == 'supported']
+        if not body_ok: continue
+        heading_ok = any(u['kind'] == 'heading' and r['verdict'] in ('supported', 'structural') for u, r in rows)
+        lines = []
+        for line in section['body'].splitlines():
+            prefix = re.match(r'^\s*(?:#{1,6}\s+|[-*+]\s+|\d+[.)]\s+|>\s*)', line)
+            stripped = line[prefix.end():].strip() if prefix else line.strip()
+            if not stripped or re.fullmatch(r'[|\s:-]+', stripped): continue
+            kept = [piece.strip() for piece in re.split(r'(?<=[.!?])\s+(?=[A-Z("“])', stripped) if piece.strip() in keep]
+            if kept: lines.append((prefix.group(0) if prefix else '') + ' '.join(kept))
+        used = {ref for u, r in body_ok for ref in (r.get('evidence_ids') or []) + citation_ids(u['text'])}
+        published.append({**section, 'heading': section['heading'] if heading_ok else UNCONFIRMED_HEADING, 'body': '\n'.join(lines),
+                          'evidence_ids': [ref for ref in section['evidence_ids'] if ref in used]})
+    conflicts = [c for c in payload['conflicts'] if all(piece in keep for piece in _pieces(c))]
+    return published, {**payload, 'conflicts': conflicts}
+
+
 def _withheld(reason, coverage, statements=None, payload=None, code='statements_unconfirmed'):
     gaps = [reason[0].upper() + reason[1:],
             'The retrieved passages are listed with this answer; open their original pages to read the requirements directly.']
@@ -656,19 +690,34 @@ def grounding_gate(verify, payload, sections, evidence, coverage, workflow=None)
         if verdict != 'supported': failed += 1
         results.append({**base, 'verdict': verdict, 'reasons': reasons, 'checks_applied': applied,
                         **({'evidence_ids': check['evidence_ids'], 'quotes': check['quotes']} if verdict == 'supported' and check else {})})
-    if failed:
+    # Unconfirmed text is never published. It is returned separately (`_unconfirmed`, popped by the caller)
+    # so it can be kept server-side as model context for a recheck the user asks for.
+    unconfirmed = [{'text': unit['text'], 'reasons': result['reasons'] or [_NO_SUPPORT]}
+                   for result, unit in zip(results, units, strict=True) if result['verdict'] not in ('supported', 'structural')]
+    confirmed_body = any(r['verdict'] == 'supported' and r['kind'] == 'section' for r in results)
+    if failed and not confirmed_body:
         # Fail closed: statements carry IDs, verdicts and server-authored reasons only, never draft text.
-        return _withheld(f'{failed} of {len(claims)} statements could not be confirmed in their cited passages.', coverage, results, payload)
-    for result, unit in zip(results, units, strict=True): result['text'] = unit['text']
+        withheld = _withheld(f'{failed} of {len(claims)} statements could not be confirmed in their cited passages.', coverage, results, payload)
+        withheld[0]['_unconfirmed'] = unconfirmed
+        return withheld
+    for result, unit in zip(results, units, strict=True):
+        if result['verdict'] in ('supported', 'structural'): result['text'] = unit['text']
+    if failed:
+        sections, payload = _confirmed_only(sections, units, results, payload)
     anchored = sum(1 for r in results if r['verdict'] == 'supported' and r['anchored'])
     status = 'partial' if coverage['excluded'] and payload['status'] == 'supported' else payload['status']
     if status == 'insufficient': status = 'partial'
-    explanation = (f'Each of the {len(claims)} published statements was matched to quoted passages by a same-model check and '
-                   f"MCDXKit's literal checks ({anchored} carry inline citations). This is not proof of meaning or completeness."
+    if failed: status = 'partial'
+    published = len(claims) - failed
+    lead = (f'{published} of {len(claims)} statements were confirmed and are shown; {failed} could not be confirmed in their cited '
+            'passages and are not shown. Each shown statement' if failed else f'Each of the {len(claims)} published statements')
+    explanation = (lead + " was matched to quoted passages by a same-model check and MCDXKit's literal checks "
+                   f'({anchored} carry inline citations). This is not proof of meaning or completeness.'
                    + (f" Only {coverage['ready']} of {coverage['total']} documents were searchable." if coverage['excluded'] else ''))
     return ({'version': GROUNDING_VERSION, 'status': 'grounded', 'method': METHOD, 'statements': results, 'scope': _scope(coverage),
              'coverage': 'partial' if coverage['excluded'] else 'searchable_documents',
-             'inline_anchored': anchored, 'checked_statements': len(claims)},
+             'inline_anchored': anchored, 'checked_statements': len(claims), 'unconfirmed_statements': failed,
+             '_unconfirmed': unconfirmed},
             sections, {'status': status, 'explanation': explanation, 'conflicts': payload['conflicts']},
             _model_gaps_note(payload))
 

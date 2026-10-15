@@ -126,6 +126,7 @@ export function Ask({project,jobs,initialQuestion,plan=false,onSend,onStop,onSou
         <ul className="cx-prompts">{PROMPTS.map(prompt=><li key={prompt}><Button className="cx-prompt" onPress={()=>{setQuestion(prompt);composer.current?.focus();}}>{prompt}</Button></li>)}</ul>
       </div>}
       {thread.map((answer,i)=><Answer key={answer.id} projectId={project.id} answer={answer} turnRef={i===thread.length-1?lastTurn:undefined} onSource={onSource} onWorkflow={onWorkflow} onSaveOffer={onSaveOffer}
+        onRecheck={i===thread.length-1&&!blocked?()=>void send(RECHECK,answer.id,false):undefined}
         saving={jobs.some(j=>j.action==='extract_offer'&&BUSY.includes(j.state))} activity={jobs.find(j=>(j.result as Draft)?.id===answer.id)?.activity}/>)}
       {asked&&<div className="cx-turn">
         <UserMessage text={asked}/>
@@ -201,6 +202,27 @@ function UserMessage({text}:{text:string}) {
 const STATUS={supported:'Model reports support',partial:'Partial evidence',insufficient:'More information needed',conflicted:'Conflicting evidence'} as const;
 // Answers saved before the grounding gate carry no grounding record; they keep this label and render unchanged.
 const NOT_CHECKED='Earlier answer, not grounding-checked';
+// A recheck is an ordinary follow-up: the server gives the model the parent's unconfirmed statements as
+// private context, and the new answer passes the same statement check. Nothing unconfirmed is shown.
+export const RECHECK='Recheck the statements from your previous answer that could not be confirmed.';
+const NO_SUPPORT='the check did not find it stated in the cited passages';
+// Unconfirmed statements are kept for a recheck from grounding/6; earlier answers have nothing to recheck from.
+const recheckable=(g:Grounding)=>Number(g.version?.split('/')[1])>=6;
+
+function Unconfirmed({grounding:g,onRecheck}:{grounding:Grounding;onRecheck?:()=>void}) {
+  const failed=(g.statements||[]).filter(s=>s.verdict!=='supported'&&s.verdict!=='structural');
+  if(!failed.length)return null;
+  const counts=new Map<string,number>();
+  for(const s of failed)for(const r of s.reasons.length?s.reasons:[NO_SUPPORT])counts.set(r,(counts.get(r)||0)+1);
+  const reasons=[...counts].sort((a,b)=>b[1]-a[1]);
+  const shown=g.status==='grounded';
+  return <div className="cx-unconfirmed" role="note">
+    <p>{shown?<><strong>{(g.checked_statements??failed.length)-failed.length} of {g.checked_statements??failed.length} statements confirmed.</strong> {failed.length} could not be confirmed in their cited passages and {failed.length===1?'is':'are'} not shown:</>
+      :<>{failed.length} {failed.length===1?'statement':'statements'} could not be confirmed:</>}</p>
+    <ul>{reasons.slice(0,5).map(([reason,n])=><li key={reason}>{n} · {reason}</li>)}</ul>
+    {onRecheck&&recheckable(g)&&<Button className="cx-secondary" onPress={onRecheck}>{shown?'Recheck the rest':'Recheck these statements'}</Button>}
+  </div>;
+}
 const NOT_CHECKED_DETAIL='This answer was saved before statement checks existed. Citation IDs were matched to retrieved passages and stated numbers were compared literally with the cited text. Open the citations to confirm each statement.';
 // Grounding badges never say verified, true, approved or complete.
 const BADGE:Record<Grounding['status'],string>={grounded:'Model-checked',withheld:'Draft withheld',abstained:'Not found',workflow:'Workflow guidance'};
@@ -222,7 +244,7 @@ const KINDS:Record<GroundingStatement['kind'],string>={heading:'Heading',section
 const auditName=(id:string)=>`mcdxkit-answer-${id}-audit.json`;
 const ACTIONS:Record<WorkflowAction,string>={add_files:'Add files',index_documents:'Index documents',extract_requirements:'Extract requirements',review_requirements:'Review requirements',map_inputs:'Inspect input mapping',calculate:'Calculate current inputs',view_outputs:'View outputs'};
 
-function Answer({projectId,answer,turnRef,onSource,onWorkflow,onSaveOffer,saving,activity}:{projectId:string;answer:Draft;turnRef?:Ref<HTMLElement>;activity?:Job['activity'];onSource:SourceHandler;onWorkflow:(action:WorkflowAction)=>void;onSaveOffer?:(answer:string)=>void;saving?:boolean}) {
+function Answer({projectId,answer,turnRef,onSource,onWorkflow,onSaveOffer,onRecheck,saving,activity}:{projectId:string;answer:Draft;turnRef?:Ref<HTMLElement>;activity?:Job['activity'];onSource:SourceHandler;onWorkflow:(action:WorkflowAction)=>void;onSaveOffer?:(answer:string)=>void;onRecheck?:()=>void;saving?:boolean}) {
   const index=useMemo(()=>citationIndex(answer.evidence),[answer.evidence]);
   const [panel,setPanel]=useState<''|'sources'|'activity'>('');
   const sourcesId=useId(),activityId=useId();
@@ -259,6 +281,7 @@ function Answer({projectId,answer,turnRef,onSource,onWorkflow,onSaveOffer,saving
         {gaps.length>0&&<ul className="cx-gaps">{gaps.map((gap,i)=><li key={i}>{gap}</li>)}</ul>}
       </div>}
       {answer.content.sections.map((section,i)=><section key={i} className="cx-section">{section.heading&&<h3>{section.heading}</h3>}<Prose index={index} sectionIds={section.evidence_ids} onSource={onSource}>{section.body}</Prose></section>)}
+      {g&&(state==='grounded'||g.reason_code==='statements_unconfirmed')&&<Unconfirmed grounding={g} onRecheck={onRecheck}/>}
       {!!answer.assessment?.conflicts.length&&<div className="cx-conflicts" role="note"><p className="cx-note-title">Sources disagree</p><ul>{answer.assessment.conflicts.map((c,i)=><li key={i}>{c}</li>)}</ul></div>}
       {offer&&!answer.extraction_ids?.length&&onSaveOffer&&<div className="cx-proposal">
         <div className="cx-proposal-head"><strong>Save these values for review?</strong><span className="cx-tag">Proposal, not saved</span></div>

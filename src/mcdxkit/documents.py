@@ -532,6 +532,19 @@ class DocumentWorkflow:
                                             else 'failed' if run in ('FAIL', 'FAILED', '4', 'CANCEL', '2', 'DONE', '3', 'COMPLETED', 'STOPPED') else 'parsing')
         return self.get(pid)
 
+    def unconfirmed_path(self, pid, aid):
+        # Outside project state on purpose: the browser, exports and audit receipts never receive this text.
+        return self.root / identifier(pid) / 'unconfirmed' / (identifier(aid) + '.json')
+
+    def unconfirmed(self, pid, aid):
+        """Statements an answer drafted but could not confirm, for the model's context on a recheck only."""
+        path = self.unconfirmed_path(pid, aid)
+        if path.is_symlink() or not path.is_file(): return []
+        try: rows = json.loads(path.read_text(encoding='utf-8'))
+        except (OSError, ValueError): return []
+        return [{'text': str(r['text'])[:500], 'reasons': [str(x)[:200] for x in r['reasons']][:6]}
+                for r in rows if isinstance(r, dict) and isinstance(r.get('reasons'), list)][:40]
+
     @staticmethod
     def conversation_history(state, parent):
         history, seen = [], set()
@@ -613,6 +626,12 @@ class DocumentWorkflow:
         question = text(question, 'Question', 2000)
         state = self.get(pid); self.verify(state)
         history = self.conversation_history(state, parent)
+        # The direct parent's unconfirmed statements are model context for a recheck; never shown to the user.
+        if parent and (rows := self.unconfirmed(pid, parent)):
+            history[-1] = {**history[-1], 'unconfirmed_statements': rows,
+                           'unconfirmed_note': 'Drafted in that turn but NOT confirmed in their cited passages, so never shown to the user. '
+                                               'They may be wrong. Research each again; state one only where a retrieved passage states it, '
+                                               'with the same numbers, units, qualifiers and negation. Otherwise report it in gaps.'}
         ready = [s for s in state['sources'] if s['status'] == 'ready' and s.get('document_id')]
         config = ModelConfig.for_workspace(self.root)
         account = self.chatgpt_account(config)
@@ -756,6 +775,7 @@ class DocumentWorkflow:
         # The gate sees the validated draft; everything it returns is either checked model text
         # (sections, conflicts) or server-authored (assessment explanation, gaps).
         grounding, published, assessment, gaps = grounding_gate(verify, payload, content['sections'], evidence, coverage, workflow)
+        unconfirmed = grounding.pop('_unconfirmed', [])
         content = {**content, 'sections': published, 'gaps': list(gaps)}     # server-owned gaps are appended below
         audit = audit_citations(published, evidence)
         self.event('check', {'grounded': 'Published statements were matched to quoted passages',
@@ -781,6 +801,10 @@ class DocumentWorkflow:
                   'clarification': clarification, 'extraction_ids': extractions,
                   'context_reads': contexts, 'audit': audit, 'extraction_offer': offers[0] if offers else None,
                   'grounding': grounding, 'assessment': assessment}
+        if unconfirmed:
+            path = self.unconfirmed_path(pid, aid)
+            path.parent.mkdir(exist_ok=True)
+            with path.open('x', encoding='utf-8') as stream: json.dump(unconfirmed, stream, allow_nan=False)
         with self.edit(pid, result=record) as current:
             self.verify(current)
             if current['revision'] != state['revision']: raise ValueError('Project sources changed during research; start a new question.')

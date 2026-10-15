@@ -297,3 +297,4 @@
   .cx .cx-model-trigger{max-width:60%}
   .cx-hint{display:none}
 }
+.cx-unconfirmed{margin-top:14px;padding:12px 14px;border:1px solid #eadbc6;border-radius:8px;background:#faf5ed;font-size:14px;color:var(--cx-ink-2)}.cx-unconfirmed ul{margin:8px 0 10px;padding-left:1.2em}.cx-unconfirmed li+li{margin-top:3px}

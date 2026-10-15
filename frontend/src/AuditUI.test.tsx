@@ -97,3 +97,29 @@ test('inline citation opens its original page while the single evidence disclosu
   await userEvent.click(summary);
   expect(disclosure.open).toBe(false);
 });
+
+test('a partly confirmed answer shows only confirmed statements and offers a recheck as a follow-up',async()=>{
+  const answer=record();
+  answer.grounding={version:'grounding/6',status:'grounded',checked_statements:3,unconfirmed_statements:2,statements:[
+    {...record().grounding!.statements![0]},
+    {id:'S2',kind:'section',section:0,verdict:'unsupported',reasons:['a number is not in the quoted text']},
+    {id:'S3',kind:'section',section:0,verdict:'unsupported',reasons:['a number is not in the quoted text','it drops the source qualifier "new"']}]};
+  const send=vi.fn().mockResolvedValue(undefined);
+  const project:Project={id:'project',title:'Project',revision:1,sources:[],drafts:[],runs:[],calculations:[],answers:[answer]};
+  render(<Ask project={project} jobs={[]} onSend={send} onStop={vi.fn()} onSource={vi.fn()} onSources={vi.fn()} onWorkflow={vi.fn()}/>);
+  const note=screen.getByText(/1 of 3 statements confirmed/).closest('.cx-unconfirmed') as HTMLElement;
+  expect(note).toHaveTextContent('2 could not be confirmed in their cited passages and are not shown');
+  expect(note).toHaveTextContent('2 · a number is not in the quoted text');
+  expect(note).toHaveTextContent('1 · it drops the source qualifier "new"');
+  await userEvent.click(screen.getByRole('button',{name:'Recheck the rest'}));
+  expect(send).toHaveBeenCalledWith('Recheck the statements from your previous answer that could not be confirmed.','answer');
+});
+
+test('answers checked before unconfirmed statements were kept offer no recheck',()=>{
+  const answer=record();
+  answer.content.sections=[];
+  answer.grounding={version:'grounding/5',status:'withheld',draft_withheld:true,reason_code:'statements_unconfirmed',statements:[{id:'S1',kind:'section',section:0,verdict:'unsupported',reasons:[]}]};
+  setup(answer);
+  expect(screen.getByText(/1 statement could not be confirmed/)).toBeVisible();
+  expect(screen.queryByRole('button',{name:/Recheck/})).toBeNull();
+});

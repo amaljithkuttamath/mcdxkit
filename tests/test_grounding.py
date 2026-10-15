@@ -21,6 +21,12 @@ class GroundingContract(unittest.TestCase):
             return {'checks': checks}
         return grounding_gate(verifier if callable(verifier) or verifier is None else check, payload, [section], rows, COVERAGE)
 
+    @staticmethod
+    def published(result):
+        """Everything the caller saves or shows: the private `_unconfirmed` channel is popped before saving."""
+        grounding, *rest = result
+        return [{k: v for k, v in grounding.items() if k != '_unconfirmed'}, *rest]
+
     def assert_withheld(self, result, forbidden=None):
         grounding, sections, assessment, gaps = result
         self.assertEqual(grounding['status'], 'withheld')
@@ -28,7 +34,7 @@ class GroundingContract(unittest.TestCase):
         self.assertEqual(assessment['status'], 'insufficient')
         self.assertTrue(gaps)
         if forbidden:
-            self.assertNotIn(forbidden, json.dumps(result), 'Rejected prose must not leak through explanation or audit')
+            self.assertNotIn(forbidden, json.dumps(self.published(result)), 'Rejected prose must not leak through explanation or audit')
 
     def test_supported_scoped_statement_is_kept(self):
         result = self.run_gate()
@@ -87,7 +93,50 @@ class GroundingContract(unittest.TestCase):
         self.assert_withheld(self.run_gate('The engineer has approved this design.', verifier='not_a_claim'))
 
     def test_heading_is_checked_too(self):
-        self.assert_withheld(self.run_gate(heading='The settlement limit is 7 inches'))
+        # A false heading is never shown: the confirmed body is published under a server label instead.
+        heading = 'The settlement limit is 7 inches'
+        def verify(statements, evidence):
+            return {'checks': [{'id': s['id'], 'verdict': 'unsupported' if s['kind'] == 'heading' else 'supported',
+                                'evidence_ids': ['E1'], 'quotes': [{'evidence_id': 'E1', 'text': SOURCE}]} for s in statements]}
+        result = self.run_gate(heading=heading, verifier=verify)
+        grounding, sections, assessment, _ = result
+        self.assertNotIn(heading, json.dumps(self.published(result)))
+        self.assertEqual(sections[0]['heading'], 'Confirmed statements')
+        self.assertEqual((grounding['status'], grounding['unconfirmed_statements'], assessment['status']), ('grounded', 1, 'partial'))
+        self.assertEqual(grounding['_unconfirmed'], [{'text': heading, 'reasons': ['the check did not find it stated in the cited passages']}])
+
+    def test_only_confirmed_statements_are_published(self):
+        body = ('- Total settlement shall not exceed 2 inches over 50 years for new retaining walls [E1].\n'
+                '- Differential settlement shall not exceed 9 inches [E1].')
+        result = self.run_gate(body)
+        grounding, sections, assessment, gaps = result
+        shown = json.dumps(self.published(result))
+        self.assertIn('Total settlement shall not exceed 2 inches', sections[0]['body'])
+        self.assertTrue(sections[0]['body'].startswith('- '))            # list layout survives
+        self.assertNotIn('Differential', shown)                         # the wrong value is never shown
+        self.assertEqual((grounding['checked_statements'], grounding['unconfirmed_statements']), (2, 1))
+        self.assertIn('1 of 2 statements were confirmed', assessment['explanation'])
+        failed = [s for s in grounding['statements'] if s['verdict'] != 'supported' and s['verdict'] != 'structural']
+        self.assertEqual(len(failed), 1); self.assertNotIn('text', failed[0])
+        self.assertEqual(grounding['_unconfirmed'][0]['text'], 'Differential settlement shall not exceed 9 inches [E1].')
+        self.assertIn('a number is not in the quoted text', grounding['_unconfirmed'][0]['reasons'])
+
+    def test_a_section_with_no_confirmed_statement_is_dropped_and_nothing_confirmed_is_withheld(self):
+        rows = [{'id': 'E1', 'source_id': 's', 'source_name': 'Synthetic.pdf', 'text': SOURCE, 'positions': [[7, 0, 0, 0, 0]]},
+                {'id': 'E2', 'source_id': 's', 'source_name': 'Synthetic.pdf', 'text': 'Piles shall be steel H-piles.', 'positions': [[8, 0, 0, 0, 0]]}]
+        good = {'heading': 'Limit', 'body': 'Total settlement shall not exceed 2 inches over 50 years for new retaining walls [E1].', 'evidence_ids': ['E1']}
+        bad = {'heading': 'Piles', 'body': 'Piles shall be timber [E2].', 'evidence_ids': ['E2']}
+        payload = {'kind': 'research', 'status': 'supported', 'assessment': '', 'conflicts': [], 'gaps': []}
+        def verify(statements, evidence):
+            return {'checks': [{'id': s['id'], 'verdict': 'unsupported' if 'timber' in s['text'] or s['text'] == 'Piles' else 'supported',
+                                'evidence_ids': ['E1'], 'quotes': [{'evidence_id': 'E1', 'text': SOURCE}]} for s in statements]}
+        grounding, sections, _, _ = grounding_gate(verify, payload, [good, bad], rows, COVERAGE)
+        self.assertEqual([s['heading'] for s in sections], ['Limit'])
+        self.assertEqual(sections[0]['evidence_ids'], ['E1'])
+        # With no confirmed body statement at all, the answer is withheld as before, but the text is kept privately.
+        withheld = grounding_gate(verify, payload, [bad], rows, COVERAGE)
+        self.assert_withheld(withheld, 'timber')
+        self.assertEqual([u['text'] for u in withheld[0]['_unconfirmed']], ['Piles shall be timber [E2].'])
 
     def test_workflow_kind_does_not_bypass_document_claim_checks(self):
         payload = {'kind': 'workflow', 'status': 'supported', 'assessment': 'The design is approved.', 'conflicts': [], 'gaps': []}

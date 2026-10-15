@@ -180,6 +180,46 @@ class KnowledgeTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'conversation|answer'):
                 flow.ask(pid, 'Foreign?', Retrieval(), agent=Agent(), parent='f'*32)
 
+    def test_unconfirmed_statements_stay_private_and_feed_a_recheck(self):
+        import json
+        from mcdxkit.documents import DocumentWorkflow
+        with tempfile.TemporaryDirectory() as directory:
+            flow = DocumentWorkflow(Path(directory)); pid = flow.create('Recheck')['id']
+            flow.add_source(pid, 'walls.pdf', b'%PDF-1.4\nsynthetic')
+            with flow.edit(pid) as state:
+                state['dataset_id'] = 'dataset'; state['sources'][0].update(status='ready', document_id='d1')
+            class Retrieval:
+                def retrieve(self, dataset, ids, question):
+                    return [{'document_id': 'd1', 'content': 'New walls: 2 inches.', 'positions': [[7, 0, 1, 0, 1]]}]
+            contexts = []
+            class Agent:
+                model = 'test:free'
+                def answer(self, context, search, **kwargs):
+                    contexts.append(context); search(context['request'])
+                    return {'status': 'supported', 'assessment': 'Limits found.', 'gaps': [], 'conflicts': [],
+                            'sections': [{'heading': 'Limit', 'evidence_ids': ['E1'],
+                                          'body': 'New walls: 2 inches [E1]. Existing walls: 5 inches [E1].'}]}
+                def verify(self, statements, evidence):
+                    # A lying verifier: MCDXKit's own number check must still reject the 5-inch statement.
+                    return {'checks': [{'id': s['id'], 'verdict': 'supported', 'evidence_ids': ['E1'],
+                                        'quotes': [{'evidence_id': 'E1', 'text': 'New walls: 2 inches.'}]} for s in statements]}
+            first = flow.ask(pid, 'Wall limits?', Retrieval(), agent=Agent())
+            self.assertEqual(first['content']['sections'][0]['body'], 'New walls: 2 inches [E1].')
+            self.assertEqual(first['grounding']['unconfirmed_statements'], 1)
+            self.assertNotIn('_unconfirmed', first['grounding'])
+            # Never in project state, so never in the browser, exports or audit receipts.
+            self.assertNotIn('Existing walls', json.dumps(flow.public(flow.get(pid))))
+            self.assertEqual(flow.unconfirmed(pid, first['id'])[0]['text'], 'Existing walls: 5 inches [E1].')
+            # A recheck is a follow-up: the model gets the parent's unconfirmed statements as private context.
+            second = flow.ask(pid, 'Recheck the statements from your previous answer that could not be confirmed.',
+                              Retrieval(), agent=Agent(), parent=first['id'])
+            turn = contexts[-1]['history'][-1]
+            self.assertEqual(turn['unconfirmed_statements'][0]['text'], 'Existing walls: 5 inches [E1].')
+            self.assertIn('a number is not in the quoted text', turn['unconfirmed_statements'][0]['reasons'])
+            self.assertIn('NOT confirmed', turn['unconfirmed_note'])
+            self.assertNotIn('Existing walls', json.dumps(second['content']))
+            self.assertFalse(contexts[0]['history'])      # a first question carries no earlier turn
+
     def test_tool_extraction_saves_unreviewed_facts_and_citations_without_input_changes(self):
         from unittest.mock import patch
         from mcdxkit.documents import DocumentWorkflow
