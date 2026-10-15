@@ -4,6 +4,7 @@ User-visible changes to MCDXKit (formerly gdcalc). The format follows [Keep a Ch
 
 ## Unreleased
 
+- Preserve parenthetical applicability and approval exclusions in Ask's statement checks, even when a model reports support. Document drafts now enforce the same pinned DeepSeek provider and price caps as Ask and extraction.
 - Unified project workspace with worksheet, conversational Ask, input mapping, requirements and calculated outputs; original PDFs open in a side drawer.
 - Project-aware LangChain research with bounded RAGFlow searches, follow-up context, live activity and persisted human clarification. Suggested actions reuse explicit workflow controls.
 - Selected-page DeepSeek extraction preserves literal values, conditions and exact citations; reviewed applicability and compatible scalar bindings feed the existing engine.

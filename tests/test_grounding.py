@@ -146,6 +146,22 @@ class GroundingContract(unittest.TestCase):
         for body, source in cases:
             with self.subTest(body=body): self.assert_negation_rejected(body, source)
 
+    def test_parenthetical_applicability_cannot_be_dropped(self):
+        # These predicates refer to the enclosing requirement even though their words do not
+        # appear in the claim. A verifier's supported verdict cannot override that exclusion.
+        for note in ('not applicable', 'not governing', 'not approved', 'does not apply',
+                     'not valid for use', 'excluded from this contract', 'approval has not been issued',
+                     'all work excluded', 'this requirement exempt', 'requirements excluded'):
+            with self.subTest(note=note):
+                self.assert_negation_rejected('Settlement shall not exceed 2 inches [E1].',
+                                             f'Settlement shall not exceed 2 inches ({note}).')
+
+    def test_parenthetical_qualification_is_publishable_when_preserved(self):
+        result = self.run_gate('Settlement shall not exceed 2 inches (not applicable) [E1].',
+                               'Settlement shall not exceed 2 inches (not applicable).')
+        self.assertEqual(result[0]['status'], 'grounded')
+        self.assertIn('(not applicable)', result[1][0]['body'])
+
     def test_uncited_prose_cannot_use_non_claim_verdict_to_bypass_grounding(self):
         self.assert_withheld(self.run_gate('The engineer has approved this design.', verifier='not_a_claim'))
 

@@ -19,7 +19,9 @@ class SignInContract(unittest.TestCase):
         self.addCleanup(self.tmp.cleanup)
         self.accounts = ChatGPTAccounts(self.tmp.name)
         self.accounts._pending.clear(); self.accounts._starts.clear()
-        self.network = self.enterContext(patch('mcdxkit.chatgpt._call', side_effect=AssertionError('Unexpected network request')))
+        network = patch('mcdxkit.chatgpt._call', side_effect=AssertionError('Unexpected network request'))
+        self.network = network.start()
+        self.addCleanup(network.stop)
 
     def begin(self, **kwargs):
         handle = self.accounts.begin('http://127.0.0.1:8765', **kwargs)

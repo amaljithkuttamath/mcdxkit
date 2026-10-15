@@ -115,6 +115,23 @@ class ModelDiscoveryTests(unittest.TestCase):
         self.assertIn('max_price', model.extra_body['provider'])
         self.assertFalse(model.extra_body['provider']['allow_fallbacks'])
 
+    def test_document_drafting_enforces_paid_route_and_preserves_free_route(self):
+        response = {'choices': [{'finish_reason': 'stop', 'message': {'content':
+                    json.dumps({'sections': [], 'suggestions': [], 'gaps': []})}}]}
+        expected_routes = {
+            'deepseek/deepseek-v4.1-flash': {
+                'only': ['deepinfra/fp8'], 'allow_fallbacks': False, 'data_collection': 'deny',
+                'require_parameters': True, 'max_price': {'prompt': 0.5, 'completion': 1}},
+            'example/model:free': {'allow_fallbacks': False, 'data_collection': 'deny'},
+        }
+        for name, expected in expected_routes.items():
+            with self.subTest(model=name), patch.object(HTTPClient, 'request', return_value=response) as request:
+                config = ModelConfig('', '', '', 'synthetic-key', name)
+                config.writer().draft({'purpose': 'design_basis', 'evidence': []})
+                self.assertEqual(request.call_count, 1)
+                self.assertEqual(request.call_args.args[:2], ('POST', '/chat/completions'))
+                self.assertEqual(request.call_args.args[2]['provider'], expected)
+
     def test_search_preferences_do_not_claim_ragflow_execution(self):
         config = ModelConfig('', '', '', 'key', '')
         ids = ['nvidia/nemotron-3-embed-1b:free', 'nvidia/llama-nemotron-embed-vl-1b-v2:free']

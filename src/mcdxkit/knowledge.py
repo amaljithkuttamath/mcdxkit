@@ -150,7 +150,9 @@ def audit_citations(sections, evidence):
 #     the report's size. Over-cap reports fail closed; nothing is truncated or repaired.
 # /7: a negation inside a source parenthetical counts only for a clause it is relevant to (a table row's
 #     "(... excluded)" no longer negates every other row), and "including but not limited to" is not a negation.
-GROUNDING_VERSION = 'grounding/7'
+# /8: predicate-only parentheticals ("not applicable", "not approved") qualify the enclosing assertion;
+#     missing vocabulary overlap is not evidence that their negation concerns another subject.
+GROUNDING_VERSION = 'grounding/8'
 MAX_STATEMENTS = 40
 MAX_GROUNDING_CHARS = 90_000
 MAX_QUOTES = 8                  # per statement: enough for compound clauses and several inline citations
@@ -333,6 +335,9 @@ def _normal(value):
 # negation, and the exemption is dropped when either side states a closed "limited to" (open vs closed list is a flip).
 _OPEN_LIST = re.compile(r'\binclud(?:e|es|ed|ing),?\s+but\s+(?:is\s+|are\s+)?not\s+limited\s+to\b')
 _PARENTHETICAL = re.compile(r'\([^()]*\)')      # innermost balanced group; unbalanced text stays in the sentence
+_NAMED_EXCLUSION = re.compile(r'(?P<subject>[a-z][a-z\s-]*)\s+(?:excluded|exempt)')
+_GENERAL_SUBJECT = re.compile(r'\b(?:this|that|these|those|it|all|any|whole|entire|everything|'
+                              r'requirements?|conditions?|limits?|criteria|approval|application|use)\b')
 
 
 def _negated(value, open_list=True):
@@ -383,15 +388,18 @@ def _scope_reasons(claim, quotes, rows):
 def _source_negated(sentence, words, open_list=True):
     """Negation of a source sentence as it applies to one statement clause (content words `words`).
 
-    A negation outside parentheses governs the whole sentence. A negation inside a balanced parenthetical
-    ("(skin friction excluded)") counts only when that parenthetical is relevant to the clause: it shares a
-    content word with it, or it has a digit, a listed qualifier or no content word of its own (fail closed)."""
+    A negation outside parentheses governs the whole sentence. Predicate-only parentheticals, such as
+    "(not applicable)", also qualify the enclosing assertion. Only a subject-first exclusion, such as
+    "(skin friction excluded)", may use the existing content-overlap rule to separate table subjects.
+    Numbers, known qualifiers, general subjects and ambiguous constructions remain fail-closed."""
     plain = _normal(sentence)
     if _negated(_PARENTHETICAL.sub(' ', plain), open_list): return True
     for inner in _PARENTHETICAL.findall(plain):
         if not _negated(inner, open_list): continue
         own = _content(_NEGATION.sub(' ', inner))
         if re.search(r'\d', inner) or any(_qualifiers(inner).values()) or not own or own & words: return True
+        named = _NAMED_EXCLUSION.fullmatch(inner[1:-1].strip())
+        if named is None or _GENERAL_SUBJECT.search(named['subject']) or _negated(named['subject']): return True
     return False
 
 

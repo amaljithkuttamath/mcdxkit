@@ -148,7 +148,7 @@ Every section and suggestion must cite supplied evidence IDs. Suggest only unmap
             'model': self.model, 'messages': [{'role': 'system', 'content': instruction},
                 {'role': 'user', 'content': json.dumps(context, allow_nan=False)}],
             'temperature': 0, 'max_tokens': 4096,
-            'provider': {'allow_fallbacks': False, 'data_collection': 'deny'},
+            'provider': provider_route(self.model),
         })
         if response.get('error'): raise ValueError('OpenRouter could not generate the draft. No fallback was used.')
         try:
