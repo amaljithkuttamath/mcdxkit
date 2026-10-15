@@ -193,4 +193,17 @@ After conversion, `mcdxkit standards init output.audit.json --output engineering
 
 ## Document creation
 
-`mcdxkit documents --help` exposes create, add, ingest, status, draft, review and build. Use the same `--workspace` directory across commands; the browser uses its output directory plus `.documents`. See [the complete workflow](document-workflow.md) for service setup, review semantics and examples.
+`mcdxkit documents --help` exposes project creation, the workspace template library (`templates add|list|archive|restore`), calculations per project (`connect`, `calculations`), upload/index, conversational ask, selected-page extraction, requirement/draft review, build and durable submit/jobs/job/cancel. Use the same `--workspace` directory across commands; the browser uses its output directory plus `.documents`. See [the complete workflow](document-workflow.md) for service setup, review semantics and examples.
+
+
+To carry reviewed extracted values into the calculation workflow, use the same review bridge as the browser:
+
+```bash
+mcdxkit documents --workspace ./mcdxkit-output/.documents requirement-draft PROJECT_ID \
+  --requirements REQUIREMENT_ID --bindings '[]' \
+  --reviewer 'Engineer name' --note 'Source and conditions checked' \
+  --applicability 'Explain why this provision applies to this structure'
+mcdxkit documents --workspace ./mcdxkit-output/.documents build PROJECT_ID DRAFT_ID
+```
+
+Each selected requirement must already have a `review-requirement --status reviewed` decision. Empty bindings retain template inputs. Explicit bindings are a JSON list of objects with `requirement`, `variable`, `value` and `unit`; source and template units must match. The returned draft ID is used by `build`. This records the supplied review decision, not engineering certification.

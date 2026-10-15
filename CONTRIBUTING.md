@@ -43,7 +43,7 @@ mcdxkit serve --no-open --port 0 --output-dir ./mcdxkit-output
 
 On Windows PowerShell, activate with `.venv\Scripts\Activate.ps1`; the remaining `python -m pip` and `mcdxkit` commands are the same. Use `python` instead of `python3` when that is your Python 3 command. Node 22 is the browser-test baseline. Install the .NET 10 SDK before `setup-engine`; the generated calculator is reused across later runs.
 
-A successful contributor setup prints the server URL, opens the Files step, and passes the synthetic tests without a private template. Use `python -m mcdxkit --help` to confirm the active environment if a different installed CLI is found. Stop only the server you started and preserve its output directory.
+A successful contributor setup prints the server URL, opens the project workspace, and passes the synthetic tests without a private template. Use `python -m mcdxkit --help` to confirm the active environment if a different installed CLI is found. Stop only the server you started and preserve its output directory.
 
 Select your own compatible template in the browser. There is no public production template or engineering dataset. Tests generate synthetic inputs and do not need a private template. `setup-engine` builds into a persistent cache and refuses to overwrite it. If already installed, skip setup or build into a new explicit directory.
 
@@ -113,3 +113,17 @@ After **every push**, inspect the workflows for that exact commit SHA, including
 The [repository audit](docs/improvement-loop.md) runs after releases and weekly. Work evidence-backed findings through issue branches and PRs. Check for an existing matching issue first, record the affected commit and reproduction, distinguish infrastructure failures from product defects, and add a regression test for changed behavior. Passing software checks never grant engineering approval. Do not mark an issue done until acceptance evidence and exact-head CI, including post-merge publishing, pass.
 
 For document-authoring contributions, include tests for cited source ownership, review staleness, unit compatibility and free-provider policy. Preserve ordinary offline calculation. Use synthetic source material in protocol/browser tests, and report live RAGFlow/OpenRouter runs separately. Read [document workflow](docs/document-workflow.md).
+
+## Project workspace development
+
+Use Node 22.12+ and the committed npm lockfile:
+
+```bash
+npm ci --prefix frontend --ignore-scripts
+npm test --prefix frontend
+npm run build --prefix frontend
+```
+
+Commit `frontend/` source and regenerated `src/mcdxkit/web/workspace-dist/` together. Do not hand-edit generated assets. CI rebuilds and checks for drift. The build collects production dependency licenses, including the React client-only marker's upstream notice.
+
+For conversational changes, test follow-up scope, absent evidence, foreign citations, bounded calls, human clarification and action availability. For workers, test deduplication, interruption, cancellation fencing and responsive reads during remote work. Synthetic fixtures are required in Git; use existing private documents for local acceptance when authorized. Live model/browser checks are separate from deterministic tests and never substitute for engineering review.

@@ -73,8 +73,11 @@ class LibraryTests(unittest.TestCase):
             manifest = json.loads(z.read('manifest.json'))
             self.assertEqual(manifest['calculation_context'], context)
             self.assertTrue(manifest['calculation']['calculated'])
-        with self.assertRaisesRegex(ValueError, 'already'):
-            self.flow.attach_calculation(self.pid, self.raw, self.template)
+        # A second calculation is added beside the first; it does not invalidate the first one's design basis.
+        second = self.flow.attach_calculation(self.pid, self.raw, self.template, cases=[1])['calculation']
+        self.assertNotEqual(second['id'], linked['calculation']['id'])
+        self.assertEqual(self.flow.get(self.pid)['revision'], before['revision'])
+        self.assertEqual(self.flow.build(self.pid, draft['id'])['calculation_id'], linked['calculation']['id'])
 
     def test_unlinked_draft_and_build_have_actionable_errors(self):
         with self.assertRaisesRegex(ValueError, 'Connect'):
@@ -111,4 +114,4 @@ class LibraryTests(unittest.TestCase):
         pid = json.loads(output.getvalue())['id']
         with contextlib.redirect_stdout(io.StringIO()):
             self.assertEqual(main(['--workspace', str(self.flow.root), 'connect', pid, str(self.raw), '--template', str(self.template), '--cases', '1', '7']), 0)
-        self.assertEqual(self.flow.get(pid)['options']['cases'], [1, 7])
+        self.assertEqual(self.flow.require_calculation(self.flow.get(pid))['options']['cases'], [1, 7])

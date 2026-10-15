@@ -1,0 +1,35 @@
+# Use your ChatGPT plan for Ask
+
+MCDXKit can run every Ask conversation step on your ChatGPT plan through **Sign in with ChatGPT**, following OpenAI's documented flow for open-source, locally hosted apps. OpenRouter free models remain an alternative. This is a local, single-user feature: it is available only when `mcdxkit serve` listens on `127.0.0.1`. Network deployments (`--host 0.0.0.0` or `--public-url`) hide the ChatGPT routes, refuse to select ChatGPT, refuse ChatGPT Ask jobs, and start their workers with ChatGPT disabled, so a ChatGPT account saved in the same workspace is never used there. Queued ChatGPT jobs are failed before they are claimed, with no request sent.
+
+## Connect
+
+1. Open **Services** (with or without a project) and choose **Continue with ChatGPT**. MCDXKit opens OpenAI's sign-in in the same tab. The first time, OpenAI registers MCDXKit for your account and asks you to review its permissions.
+2. You return to the same project and view with Services open. If plan use was granted, you'll see **You're using your ChatGPT plan** once.
+3. Your account's models load automatically. Choose one: Ask now uses your ChatGPT plan. A listed model is confirmed only when a request completes.
+4. Ask shows **Using ChatGPT plan · Manage usage** next to the composer. Manage usage opens [ChatGPT settings → Usage](https://chatgpt.com/settings/usage). Choosing **OpenRouter free model** switches back immediately.
+
+You can save several ChatGPT accounts, choose which one Ask uses, sign in again, enable plan use after declining it, or **Sign out**. You can also disconnect MCDXKit in ChatGPT Settings.
+
+## What uses ChatGPT
+
+With ChatGPT selected, every model turn in an Ask conversation uses the selected account and model, including the extraction Ask performs or a save proposal you confirm, and the formatting step. MCDXKit's own tools still do the work: project-scoped RAGFlow search, original PDF page reading, citation checks, the save-proposal gate and human review. Indexing, embeddings and RAGFlow configuration are unchanged; ChatGPT does not provide embeddings here. Extraction started from **Requirements → Extract requirements** with explicit pages keeps its DeepSeek default.
+
+If ChatGPT cannot complete a request (usage limit, eligibility, policy, an interrupted stream), Ask stops with that reason. MCDXKit never switches to another provider and never retries a request automatically.
+
+## How it works
+
+- **Sign-in:** OAuth authorization code with PKCE (S256), a fresh `state` and OpenID `nonce` per attempt, `dynamic_agent_client` with `agent_name_hint=MCDXKit` for a first registration and the issued client ID afterwards, a persistent opaque host ID (`ext_agent_host_id`), the exact callback `http://127.0.0.1:<port>/auth/callback`, `resource=https://api.openai.com/v1` and the scopes `openid profile email offline_access resource.invoke chatgpt.tokens.use.direct`. No client secret or API key. Returning sign-ins send `login_hint` but not `id_token_hint`, so no ID-token data appears in browser history or logs (you may see the account selector).
+- **Verification:** MCDXKit loads OpenAI's discovery document from its fixed URL, requires `issuer` to be `https://auth.openai.com` and the `jwks_uri` to be HTTPS on `auth.openai.com`, then verifies the ID token with PyJWT: signature, issuer, audience (the issued client ID), expiry and nonce. Keys are cached for 10 minutes and refetched once for an unknown key ID. Plan use is enabled only when the token response grants `chatgpt.tokens.use.direct`; the scope is checked again before every request and after every refresh. A returning sign-in must be the same ChatGPT account and app registration. Nothing replaces existing credentials or becomes active until these checks pass. Cancelled, denied, expired, replayed or mismatched callbacks change nothing.
+- **Browser boundary:** the browser never receives tokens or the authorization URL. An authenticated request returns a one-time start link; the server redirects to OpenAI and sets an HttpOnly attempt cookie that the callback must present with the matching `state`. After the callback, the server redirects to the project and view it validated when sign-in started; it never follows a client-supplied URL.
+- **Storage:** `<output>/.documents/.chatgpt/` (owner-only): `host-id` (created atomically; concurrent first runs agree on one value), `accounts.json` (registrations, no tokens) and `tokens-<id>.json` per account (0600, atomic). Excluded from Git, Docker contexts, exports and API responses.
+- **Concurrency:** registry changes and each account's token changes (sign-in, refresh, sign-out) run under a cross-process SQLite lease (expires after 120 s; others wait up to 45 s). The lease row is committed before any network call; the only request made while holding a lease is one token-endpoint call bounded to about 35 s. Auth, discovery, JWKS and model-list responses are limited to 256 KiB (2 MiB for models) and about 20 s.
+- **Sign-out:** the account's tokens are removed immediately under its lease, so a concurrent refresh cannot restore them and no new request can start; a request already in flight may finish. MCDXKit then tries to revoke the captured refresh token at the discovery `revocation_endpoint` (at most two attempts) and tells you if remote revocation wasn't confirmed. The registration is kept for a later sign-in.
+- **Inference:** the official OpenAI Python SDK sends `POST https://api.openai.com/v1/responses` with `max_retries=0`, a fixed base URL and an HTTP client without environment proxies or redirects; `store: false`, `stream: true`, the full conversation as an `input` array, and `instructions` for the system prompt. Unsupported preview fields are omitted. MCDXKit's tools are function tools in one namespace (`{type: "namespace", name: "mcdxkit", ...}`, per the SDK's `NamespaceToolParam`); only calls in that namespace to a tool offered in that request can run. Budgets: 2 MB request, 4 MiB of streamed events, 200,000 output characters, 180 s per model turn (plus at most one 60 s read stall). A turn succeeds only on `response.completed` with status `completed`.
+
+## Limits and status
+
+- Not an enterprise identity integration: no per-user server accounts, shared deployments or tenant isolation. Anyone who can use this local MCDXKit server can use the connected ChatGPT account.
+- Error bodies returned before a stream opens are read by the OpenAI SDK without MCDXKit's byte limit.
+- The approved ChatGPT button assets are not bundled; the button is text-only until official assets are added.
+- Not yet verified against the live service: registration, consent, refresh, revocation, and whether each listed model completes the agent's structured answers. Treat the first successful conversation as the confirmation.

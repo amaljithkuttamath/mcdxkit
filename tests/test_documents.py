@@ -68,6 +68,16 @@ class DocumentTests(unittest.TestCase):
             self.assertIn('report.html', z.namelist())
         self.assertEqual(self.flow.get(self.pid)['runs'][0]['id'], result['id'])
 
+    def test_calculate_without_documents_retains_inputs_and_does_not_claim_review(self):
+        result = self.flow.build(self.pid, None)
+        manifest = json.loads(self.flow.artifact(self.pid, result['id'], 'manifest.json').read_text())
+        self.assertTrue(manifest['calculation']['calculated'])
+        self.assertEqual(manifest['overrides'], {})
+        self.assertEqual(manifest['review']['status'], 'not_recorded')
+        self.assertFalse(manifest['native_execution_verified'])
+        self.assertNotIn('Design-basis review recorded.', self.flow.artifact(self.pid, result['id'], 'report.md').read_text())
+        self.assertNotIn('Design-basis review recorded.', self.flow.artifact(self.pid, result['id'], 'report.html').read_text())
+
     def test_calculated_preview_is_the_packaged_engine_output_and_rejects_tampering(self):
         import zipfile
         _, draft = self.evidence_draft()
@@ -86,7 +96,7 @@ class DocumentTests(unittest.TestCase):
     def test_forged_citation_wrong_units_and_load_overrides_are_rejected(self):
         from mcdxkit.documents import validate_draft
         _, draft = self.evidence_draft()
-        context = self.flow.get(self.pid)
+        context = self.flow.require_calculation(self.flow.get(self.pid))
         for mutation in ('citation', 'unit', 'load'):
             payload = json.loads(json.dumps(draft['content']))
             if mutation == 'citation': payload['sections'][0]['evidence_ids'] = ['E999']
@@ -108,6 +118,54 @@ class DocumentTests(unittest.TestCase):
         with patch.dict('os.environ', {}, clear=True), self.assertRaisesRegex(ValueError, 'RAGFLOW'):
             ModelConfig.from_env().ragflow()
         self.assertEqual(self.project['title'], 'Example foundation')
+
+    def test_provider_does_not_lock_project_and_changed_sources_reject_publication(self):
+        self.evidence_draft()
+        flow, pid = self.flow, self.pid
+        class Retrieval:
+            def retrieve(self, *args):
+                return [{'document_id': 'document-1', 'content': 'Use 6 kip.', 'positions': [[1, 0, 1, 0, 1]]}]
+        class Writer:
+            model = 'test/model:free'
+            def draft(self, context):
+                flow.add_source(pid, 'later.pdf', b'%PDF-1.4\nnew revision')
+                return {'sections': [{'heading': 'Basis', 'body': 'Use 6 kip.', 'evidence_ids': ['E1']}], 'suggestions': [], 'gaps': []}
+        with self.assertRaisesRegex(ValueError, 'changed'):
+            flow.draft(pid, 'Basis', Retrieval(), Writer())
+        self.assertEqual(len(flow.get(pid)['drafts']), 1)
+        self.assertEqual(len(flow.get(pid)['sources']), 2)
+
+    def test_index_network_calls_do_not_hold_the_project_write_transaction(self):
+        flow, pid = self.flow, self.pid
+        flow.add_source(pid, 'first.pdf', b'%PDF-1.4\nfirst')
+        class Retrieval:
+            def create_dataset(self, name):
+                flow.add_source(pid, 'second.pdf', b'%PDF-1.4\nsecond')
+                return 'dataset'
+            def upload(self, dataset, name, raw):
+                with flow.edit(pid) as state: state['index_test'] = True
+                return name
+            def parse(self, dataset, ids):
+                with flow.edit(pid) as state: state['parse_test'] = True
+            def documents(self, dataset):
+                with flow.edit(pid) as state: state['status_test'] = True
+                return []
+        flow.ingest(pid, Retrieval()); flow.status(pid, Retrieval())
+        state = flow.get(pid)
+        self.assertTrue(state['index_test']); self.assertTrue(state['parse_test']); self.assertTrue(state['status_test'])
+
+    def test_build_does_not_lock_review_and_rejects_changed_decision(self):
+        from mcdxkit import engine
+        _, draft = self.evidence_draft()
+        self.flow.review(self.pid, draft['id'], [0], 'First reviewer', 'Use cited input')
+        convert = engine.convert
+        def concurrent_review(*args, **kwargs):
+            self.flow.review(self.pid, draft['id'], [], 'Second reviewer', 'Retain template input')
+            return convert(*args, **kwargs)
+        with patch('mcdxkit.documents.engine.convert', side_effect=concurrent_review):
+            with self.assertRaisesRegex(ValueError, 'changed'):
+                self.flow.build(self.pid, draft['id'])
+        self.assertEqual(self.flow.get(self.pid)['runs'], [])
 
 
 class ClientTests(unittest.TestCase):
@@ -300,3 +358,17 @@ class ConfigurationTests(unittest.TestCase):
                 save_configuration(root, {'url': 'http://different-host:9380'})
             with self.assertRaises(ValueError): save_configuration(root, {'model': 'paid/model'})
             self.assertEqual(ModelConfig.for_workspace(root).model, 'other/model:free')
+
+
+class NarrativeLabelTests(unittest.TestCase):
+    def test_export_labels_ai_reviewed_and_calculation_only_narratives(self):
+        from mcdxkit.documents import render_report, render_html
+        manifest = {'title': 'Example', 'review': {'reviewer': 'Reviewer', 'note': 'Checked', 'accepted': []},
+                    'model': 'test:free', 'draft': {'sections': [{'heading': 'Basis', 'body': 'Text', 'evidence_ids': []}], 'suggestions': [], 'gaps': []}, 'evidence': []}
+        result = {'cases': [1], 'envelope': {}}
+        for origin, label in [('ai', 'AI-drafted narrative'), ('reviewed_extraction', 'Reviewed source extraction')]:
+            for render in (render_report, render_html):
+                self.assertIn(label, render({**manifest, 'narrative_origin': origin}, result))
+        manifest['draft']['sections'] = []
+        for render in (render_report, render_html):
+            self.assertIn('Calculation only (no source narrative)', render(manifest, result))

@@ -177,6 +177,9 @@ class ModelConfig:
     router_key: str = field(repr=False)
     model: str
     reranker: str = ""
+    # Ask provider: OpenRouter free models, or the signed-in ChatGPT plan (local servers only).
+    provider: str = "openrouter"
+    chatgpt_model: str = ""
 
     @classmethod
     def from_env(cls):
@@ -185,6 +188,11 @@ class ModelConfig:
         return cls(values.get('MCDXKIT_RAGFLOW_URL', ''), secret('MCDXKIT_RAGFLOW_API_KEY', local),
                    values.get('MCDXKIT_RAGFLOW_EMBEDDING_MODEL', ''), secret('OPENROUTER_API_KEY', local),
                    values.get('MCDXKIT_OPENROUTER_MODEL', DEFAULT_ANSWER_MODEL), values.get('MCDXKIT_RAGFLOW_RERANK_MODEL', ''))
+
+    @property
+    def answer_model(self):
+        """Recorded model identity for answers; distinguishes providers."""
+        return 'chatgpt:' + self.chatgpt_model if self.provider == 'chatgpt' else self.model
 
     @classmethod
     def for_workspace(cls, root):
@@ -197,6 +205,7 @@ class ModelConfig:
                 'openrouter_configured': bool(self.router_key and self.model), 'model': self.model,
                 'url': self.url, 'embedding': self.embedding, 'reranker': self.reranker,
                 'rag_key_saved': bool(self.rag_key), 'router_key_saved': bool(self.router_key),
+                'provider': self.provider, 'chatgpt_model': self.chatgpt_model,
                 'hosted_drafting': True, 'paid_fallback': False}
 
     def ragflow(self):
@@ -249,7 +258,7 @@ class ModelConfig:
         return OpenRouter(self.router_key, self.model)
 
 
-_CONFIG_FIELDS = {'url', 'rag_key', 'embedding', 'router_key', 'model', 'reranker'}
+_CONFIG_FIELDS = {'url', 'rag_key', 'embedding', 'router_key', 'model', 'reranker', 'provider', 'chatgpt_model'}
 
 
 def _saved_configuration(root):
@@ -283,6 +292,11 @@ def save_configuration(root, changes):
         raise ValueError('Enter the RAGFlow API key again when changing its endpoint.')
     if updated['url']: HTTPClient(updated['url'], updated['rag_key'] or 'configuration-validation')
     if updated['model']: OpenRouter(updated['router_key'] or 'configuration-validation', updated['model'])
+    if updated['provider'] not in ('openrouter', 'chatgpt'): raise ValueError('Choose OpenRouter or ChatGPT as the answer provider.')
+    if updated['chatgpt_model'] and not re.fullmatch(r'[A-Za-z0-9._:-]{1,100}', updated['chatgpt_model']):
+        raise ValueError('Choose a ChatGPT model from the list for the signed-in account.')
+    if updated['provider'] == 'chatgpt' and not updated['chatgpt_model']:
+        raise ValueError('Load and choose a ChatGPT model before using ChatGPT for Ask.')
     for key in ('rag_key', 'router_key'):
         if updated[key] and (not updated[key].isascii() or any(c.isspace() for c in updated[key])):
             raise ValueError('API keys must contain printable ASCII without spaces.')

@@ -10,6 +10,9 @@
 | [Calculation and compatibility](calculation.md) | Supported expressions, load basis, execution evidence, [check results](calculation.md#check-results) and browser inspection |
 | [Template contract](../references/template-contract.md) | Required worksheet profile, geometry, inputs and overrides |
 | [Agent integration](agent-integration.md) | Use the portable [skill](../SKILL.md) with different coding agents |
+| [Document workflow](document-workflow.md) | Project documents, Ask, requirement extraction and review |
+| [Answer checks and audit receipts](answer-audit.md) | What Ask publishes, its limits, and the downloadable receipt |
+| [Use your ChatGPT plan](chatgpt.md) | Sign in with ChatGPT for Ask on a local server |
 | [Docker and hosting](../deploy/README.md) | Images, Compose, authentication, HTTPS and persistent storage |
 
 ## Build and contribute
@@ -24,6 +27,7 @@ These describe direction and requirements, not completed features:
 
 - [Mathcad Prime feature review](mathcad-prime-review.md): product coverage and the independent calculation architecture.
 - [Engineering standards register](engineering-standards.md): proposed per-value sources, applicable codes, editions and rule validation.
+- [Ask retrieval and answer evaluation](retrieval-evaluation.md): gold labels, per-stage metrics, first-loss attribution, replay and the acceptance rule for Ask pipeline changes.
 - [Template-driven 3D reuse research](research/template-driven-3d.md): existing open-source implementations, license considerations and prototype acceptance criteria.
 
 [Engineering workflow and offline project plan](engineering-workflow.md) records the source-to-review product direction and separates shipped capabilities from future acceptance gates.

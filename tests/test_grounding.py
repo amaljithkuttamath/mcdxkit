@@ -1,0 +1,179 @@
+"""Independent adversarial publication checks using synthetic specification text."""
+import json
+import unittest
+
+from mcdxkit.knowledge import GroundingReport, grounding_gate
+
+
+SOURCE = 'For new retaining walls, total settlement shall not exceed 2 inches over 50 years.'
+COVERAGE = {'ready': 1, 'total': 1, 'excluded': []}
+
+
+class GroundingContract(unittest.TestCase):
+    def run_gate(self, body='Total settlement shall not exceed 2 inches over 50 years for new retaining walls [E1].',
+                 source=SOURCE, verifier='supported', **overrides):
+        section = {'heading': overrides.pop('heading', 'Limit'), 'body': body, 'evidence_ids': ['E1']}
+        payload = {'kind': 'research', 'status': 'supported', 'assessment': '', 'conflicts': [], 'gaps': [], **overrides}
+        rows = [{'id': 'E1', 'source_id': 's', 'source_name': 'Synthetic.pdf', 'text': source, 'positions': [[7, 0, 0, 0, 0]]}]
+        def check(statements, evidence):
+            checks = [{'id': s['id'], 'verdict': verifier, 'evidence_ids': ['E1'],
+                       'quotes': [{'evidence_id': 'E1', 'text': source}]} for s in statements]
+            return {'checks': checks}
+        return grounding_gate(verifier if callable(verifier) or verifier is None else check, payload, [section], rows, COVERAGE)
+
+    def assert_withheld(self, result, forbidden=None):
+        grounding, sections, assessment, gaps = result
+        self.assertEqual(grounding['status'], 'withheld')
+        self.assertEqual(sections, [])
+        self.assertEqual(assessment['status'], 'insufficient')
+        self.assertTrue(gaps)
+        if forbidden:
+            self.assertNotIn(forbidden, json.dumps(result), 'Rejected prose must not leak through explanation or audit')
+
+    def test_supported_scoped_statement_is_kept(self):
+        result = self.run_gate()
+        self.assertEqual(result[0]['status'], 'grounded')
+        self.assertIn('new retaining walls', result[1][0]['body'])
+
+    def test_unsupported_and_uncertain_verdicts_withhold_the_draft(self):
+        for verdict in ['unsupported', 'uncertain']:
+            with self.subTest(verdict=verdict): self.assert_withheld(self.run_gate(verifier=verdict))
+
+    def test_unavailable_verifier_cannot_publish_unchecked_prose(self):
+        self.assert_withheld(self.run_gate(verifier=None))
+
+    def test_failed_verifier_withholds_without_replaying(self):
+        calls = []
+        def failed(statements, evidence):
+            calls.append(True)
+            raise TimeoutError('private service response must not be exposed')
+        result = self.run_gate(verifier=failed)
+        self.assert_withheld(result, 'private service response')
+        self.assertEqual(len(calls), 1)
+
+    def test_missing_duplicate_and_foreign_statement_checks_are_rejected(self):
+        for ids in [[], ['S1', 'S1'], ['S1', 'S999']]:
+            def verify(statements, evidence, ids=ids):
+                return {'checks': [{'id': sid, 'verdict': 'supported', 'evidence_ids': ['E1'],
+                                    'quotes': [{'evidence_id': 'E1', 'text': SOURCE}]} for sid in ids]}
+            with self.subTest(ids=ids): self.assert_withheld(self.run_gate(verifier=verify))
+
+    def test_foreign_ids_and_fabricated_quotes_are_rejected(self):
+        for eid, quote in [('E99', SOURCE), ('E1', 'The source allows settlement of seven inches.')]:
+            def verify(statements, evidence, eid=eid, quote=quote):
+                return {'checks': [{'id': s['id'], 'verdict': 'supported', 'evidence_ids': [eid],
+                                    'quotes': [{'evidence_id': eid, 'text': quote}]} for s in statements]}
+            with self.subTest(eid=eid): self.assert_withheld(self.run_gate(verifier=verify))
+
+    def test_wrong_value_unit_and_reversed_bound_cannot_pass_a_lying_verifier(self):
+        for body in ['Settlement shall not exceed 7 inches over 50 years [E1].',
+                     'Settlement shall not exceed 2 feet over 50 years [E1].',
+                     'Settlement must be at least 2 inches over 50 years [E1].']:
+            with self.subTest(body=body): self.assert_withheld(self.run_gate(body), body)
+
+    def test_same_unit_elsewhere_does_not_support_the_wrong_value_unit_pair(self):
+        source = 'The offset is 2 feet. Settlement shall not exceed 3 inches.'
+        self.assert_withheld(self.run_gate('Settlement shall not exceed 2 inches [E1].', source))
+
+    def test_signed_value_cannot_lose_its_sign(self):
+        self.assert_withheld(self.run_gate('The design groundwater elevation is 2 m [E1].',
+                                          'The design groundwater elevation is -2 m.'))
+
+    def test_scope_cannot_be_borrowed_from_a_different_sentence(self):
+        self.assert_withheld(self.run_gate('The limit for existing walls is 2 inches over 50 years [E1].',
+                                          SOURCE + ' Existing walls require a separate assessment.'))
+
+    def test_uncited_prose_cannot_use_non_claim_verdict_to_bypass_grounding(self):
+        self.assert_withheld(self.run_gate('The engineer has approved this design.', verifier='not_a_claim'))
+
+    def test_heading_is_checked_too(self):
+        self.assert_withheld(self.run_gate(heading='The settlement limit is 7 inches'))
+
+    def test_workflow_kind_does_not_bypass_document_claim_checks(self):
+        payload = {'kind': 'workflow', 'status': 'supported', 'assessment': 'The design is approved.', 'conflicts': [], 'gaps': []}
+        section = {'heading': 'Approval', 'body': 'The engineer has approved this design.', 'evidence_ids': []}
+        result = grounding_gate(None, payload, [section], [], COVERAGE)
+        self.assertEqual(result[1], [])
+        self.assertNotIn('The design is approved.', json.dumps(result))
+
+    def test_unchecked_gap_prose_is_not_published(self):
+        result = self.run_gate(gaps=['The engineer has approved this design.'])
+        self.assertNotIn('The engineer has approved this design.', json.dumps(result))
+
+    def test_no_evidence_abstains_without_a_verifier_call_or_model_claims(self):
+        def forbidden(*args): raise AssertionError('No reason to call a verifier with no evidence')
+        payload = {'kind': 'research', 'status': 'insufficient', 'assessment': 'The design is approved.',
+                   'conflicts': [], 'gaps': ['The engineer has approved this design.']}
+        result = grounding_gate(forbidden, payload, [], [], COVERAGE)
+        self.assertEqual(result[0]['status'], 'abstained')
+        self.assertEqual(result[1], [])
+        self.assertNotIn('approved this design', json.dumps(result))
+
+
+    def test_compound_statement_can_provide_four_distinct_supporting_quotes(self):
+        sentences = ['Clearance is 2 feet.', 'Width is 3 feet.', 'Height is 4 feet.', 'Length is 5 feet.']
+        def verify(statements, evidence):
+            return {'checks': [{'id': st['id'], 'verdict': 'supported', 'evidence_ids': ['E1'],
+                                'quotes': [{'evidence_id': 'E1', 'text': text} for text in sentences]} for st in statements]}
+        result = self.run_gate('Clearance is 2 feet; width is 3 feet; height is 4 feet; length is 5 feet [E1].',
+                               ' '.join(sentences), verifier=verify)
+        self.assertEqual(result[0]['status'], 'grounded')
+        self.assertEqual(len(result[0]['statements'][-1]['quotes']), 4)
+
+    def test_oversized_and_duplicate_quote_reports_fail_closed(self):
+        for quotes in [[{'evidence_id': 'E1', 'text': SOURCE}] * 2,
+                       [{'evidence_id': 'E1', 'text': f'Value {n}.'} for n in range(9)]]:
+            def verify(statements, evidence, quotes=quotes):
+                return {'checks': [{'id': st['id'], 'verdict': 'supported', 'evidence_ids': ['E1'],
+                                    'quotes': quotes} for st in statements]}
+            with self.subTest(count=len(quotes)):
+                result = self.run_gate(verifier=verify)
+                self.assert_withheld(result)
+                self.assertEqual(result[0]['reason_code'], 'invalid_verifier_response')
+
+    def test_failure_reason_is_server_owned_and_excludes_exception_text(self):
+        def verify(statements, evidence):
+            raise TimeoutError('synthetic-private-canary')
+        result = self.run_gate(verifier=verify)
+        self.assert_withheld(result, 'synthetic-private-canary')
+        self.assertEqual(result[0]['reason_code'], 'provider_unavailable')
+        self.assertEqual(self.run_gate(verifier=None)[0]['reason_code'], 'verifier_unavailable')
+
+
+    def test_long_qualified_source_sentence_is_preserved_as_one_exact_quote(self):
+        source = ('For new retaining walls adjacent to the northern approach embankment, with excavation complete '
+                  'and the permanent drainage installed, total settlement shall not exceed 2 inches over 50 years, '
+                  'considering both short-term and long-term settlement and the combined effects of construction '
+                  'sequence, fill placement, groundwater variation, seasonal changes, and the surrounding facilities, '
+                  'provided that the design assumptions remain applicable to the selected structure and that '
+                  'the supporting ground investigation has been reviewed by the responsible engineer.')
+        self.assertGreater(len(source), 400)
+        result = self.run_gate(source[:-1] + ' [E1].', source)
+        self.assertEqual(result[0]['status'], 'grounded')
+        self.assertEqual(result[0]['statements'][-1]['quotes'][0]['text'], source)
+
+    def test_excessively_long_quotes_still_fail_closed_without_truncation(self):
+        source = SOURCE + ' Additional qualification.' * 130
+        self.assertGreater(len(source), 3000)
+        result = self.run_gate(source=source)
+        self.assert_withheld(result)
+        self.assertEqual(result[0]['reason_code'], 'invalid_verifier_response')
+
+
+    def test_combined_quote_size_cannot_evade_per_statement_guard(self):
+        check = {'id': 'S1', 'verdict': 'supported', 'evidence_ids': ['E1'],
+                 'quotes': [{'evidence_id': 'E1', 'text': str(n) + 'x' * 1599} for n in range(4)]}
+        with self.assertRaises(ValueError):
+            GroundingReport.model_validate({'checks': [check]})
+
+    def test_report_quote_budget_applies_across_individually_bounded_statements(self):
+        checks = [{'id': f'S{n}', 'verdict': 'supported', 'evidence_ids': ['E1'],
+                   'quotes': [{'evidence_id': 'E1', 'text': str(q) + 'x' * 1099} for q in range(4)]}
+                  for n in range(5)]
+        for check in checks:
+            GroundingReport.model_validate({'checks': [check]})
+        with self.assertRaises(ValueError):
+            GroundingReport.model_validate({'checks': checks})
+
+
+if __name__ == '__main__': unittest.main()

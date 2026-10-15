@@ -75,6 +75,12 @@ jobs:
         with:
           node-version: '22'
       - run: node --check src/mcdxkit/web/app.js && node --check src/mcdxkit/web/documents.js
+      - name: Build and test the project workspace
+        run: |
+          npm ci --prefix frontend --ignore-scripts
+          npm test --prefix frontend
+          npm run build --prefix frontend
+          git diff --exit-code -- src/mcdxkit/web/workspace-dist
       - name: Browser progress orchestration
         run: node --test tests/*.test.cjs
       - name: Build and inspect distribution

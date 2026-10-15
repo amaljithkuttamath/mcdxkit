@@ -15,6 +15,11 @@
 !src/mcdxkit/web/*.html
 !src/mcdxkit/web/*.css
 !src/mcdxkit/web/*.js
+!src/mcdxkit/web/workspace-dist/
+!src/mcdxkit/web/workspace-dist/*.html
+!src/mcdxkit/web/workspace-dist/*.js
+!src/mcdxkit/web/workspace-dist/*.css
+!src/mcdxkit/web/workspace-dist/*.txt
 !src/mcdxkit/web/fonts/
 !src/mcdxkit/web/fonts/*.ttf
 !src/mcdxkit/web/fonts/OFL.txt
@@ -29,3 +34,4 @@
 **/.documents/
 **/.credentials.json
 **/.credentials-*
+**/.chatgpt/

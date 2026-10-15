@@ -10,7 +10,7 @@ readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE", "THIRD_PARTY.md"]
 requires-python = ">=3.10"
-dependencies = ["lxml>=5.3,<7", "fastapi>=0.115,<1", "uvicorn>=0.30,<1", "python-dotenv>=1.1,<2"]
+dependencies = ["lxml>=5.3,<7", "fastapi>=0.115,<1", "uvicorn>=0.30,<1", "python-dotenv>=1.1,<2", "pypdf>=6.20.1,<7", "huey>=3.4,<4", "langchain>=1.4.6,<2", "langchain-openai>=1.7.2,<2", "ag-ui-protocol>=1.0.0,<2", "PyJWT[crypto]>=2.10,<3", "httpx>=0.27,<1", "openai>=1.109,<3"]
 
 [project.urls]
 Homepage = "https://github.com/amaljithkuttamath/mcdxkit"
@@ -25,7 +25,7 @@ mcdxkit = "mcdxkit.cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-mcdxkit = ["web/*.html", "web/*.css", "web/*.js", "web/pdfjs/*", "web/pdfjs/standard_fonts/*", "web/pdfjs/cmaps/*", "web/pdfjs/wasm/*", "web/fonts/*.ttf", "web/fonts/OFL.txt", "calcpad_bridge/*.cs", "calcpad_bridge/*.csproj"]
+mcdxkit = ["web/*.html", "web/*.css", "web/*.js", "web/workspace-dist/*.html", "web/workspace-dist/*.js", "web/workspace-dist/*.css", "web/workspace-dist/*.txt", "web/pdfjs/*", "web/pdfjs/standard_fonts/*", "web/pdfjs/cmaps/*", "web/pdfjs/wasm/*", "web/fonts/*.ttf", "web/fonts/OFL.txt", "calcpad_bridge/*.cs", "calcpad_bridge/*.csproj"]
 
 [tool.ruff]
 extend-exclude = ["agents", "references"]

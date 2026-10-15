@@ -21,6 +21,8 @@ class ServerTests(unittest.TestCase):
     def setUp(self):
         config = mock.patch('mcdxkit.document_clients.local_environment', return_value={})
         config.start(); self.addCleanup(config.stop)
+        credentials = mock.patch.dict('os.environ', {'OPENROUTER_API_KEY': '', 'OPENROUTER_API_KEY_FILE': '', 'MCDXKIT_RAGFLOW_API_KEY': '', 'MCDXKIT_RAGFLOW_API_KEY_FILE': ''})
+        credentials.start(); self.addCleanup(credentials.stop)
         self.folder = tempfile.TemporaryDirectory()
         self.root = Path(self.folder.name)
         self.template = self.root / 'reference.mcdx'
@@ -55,6 +57,67 @@ class ServerTests(unittest.TestCase):
     def upload(self, name='loads.gp11t', content=None, kind='report'):
         return self.request('POST', '/api/upload?' + urlencode({'name': name, 'kind': kind}),
                             report().encode() if content is None else content)
+
+    def test_chatgpt_signin_routes_require_session_and_preserve_callback_exception_scope(self):
+        self.assertEqual(self.request('GET','/api/chatgpt',authenticated=False)[0],403)
+        status,body=self.request('GET','/api/chatgpt')
+        self.assertEqual(status,200);self.assertTrue(body['available'])
+        self.assertEqual(body['accounts'],[])
+        self.assertEqual(self.request('POST','/api/chatgpt/connect',{},authenticated=False)[0],403)
+        self.assertEqual(self.request('POST','/api/chatgpt/connect',{},headers={'Origin':'https://evil.test'})[0],403)
+        self.assertEqual(self.request('GET','/auth/start?handle=wrong',headers={'Sec-Fetch-Site':'cross-site'})[0],403)
+        # The OAuth return alone may be cross-site; unknown state still cannot grant an account.
+        with mock.patch('mcdxkit.chatgpt._call',side_effect=AssertionError('Unexpected external request')):
+            self.assertEqual(self.request('GET','/auth/callback?state=wrong&code=wrong',headers={'Sec-Fetch-Site':'cross-site'})[0],303)
+        self.assertEqual(self.request('GET','/api/chatgpt')[1]['accounts'],[])
+        self.assertEqual(self.request('POST','/api/chatgpt/connect',{'project':'f'*32,'view':'ask'})[0],400)
+
+    def test_background_jobs_require_session_and_remain_inspectable(self):
+        status, project = self.request('POST', '/api/documents/create', {'title': 'Background example'})
+        self.assertEqual(status, 200)
+        data = {'project': project['id'], 'action': 'ask', 'payload': {'question': 'What is the limit?'}, 'request_key': 'one'}
+        status, _ = self.request('POST', '/api/jobs', data, authenticated=False)
+        self.assertIn(status, (401, 403))
+        status, job = self.request('POST', '/api/jobs', data)
+        self.assertEqual(status, 202, job)
+        status, restored = self.request('GET', '/api/jobs/' + job['id'])
+        self.assertEqual(status, 200)
+        self.assertEqual(restored['id'], job['id'])
+        self.assertNotIn('owner', restored)
+        self.assertNotIn('request_key', restored)
+        status, listing = self.request('GET', '/api/jobs?project=' + project['id'])
+        self.assertEqual(status, 200)
+        self.assertEqual(listing[0]['id'], job['id'])
+        status, _ = self.request('POST', '/api/jobs/' + job['id'] + '/cancel', {})
+        self.assertEqual(status, 200)
+        status, stream = self.request('GET', '/api/jobs/' + job['id'] + '/events')
+        self.assertEqual(status, 200)
+        self.assertIn(b'event: job', stream)
+        self.assertIn(job['id'].encode(), stream)
+        self.assertNotIn(b'request_key', stream)
+        self.assertIn(self.request('GET', '/api/jobs/' + job['id'] + '/events', authenticated=False)[0], (401, 403))
+
+    def test_agui_stream_preserves_session_guards_terminal_state_and_reconnect(self):
+        status, project = self.request('POST', '/api/documents/create', {'title': 'AG-UI boundary'})
+        self.assertEqual(status, 200)
+        with mock.patch('mcdxkit.jobs.JobStore.dispatch'):
+            status, job = self.request('POST', '/api/jobs', {'project':project['id'], 'action':'ask',
+                'payload':{'question':'What applies?'}, 'request_key':'agui-boundary'})
+            self.assertEqual(status, 202)
+            self.assertEqual(self.request('POST', '/api/jobs/'+job['id']+'/cancel', {})[0], 200)
+        url='/api/jobs/'+job['id']+'/agui'
+        self.assertIn(self.request('GET', url, authenticated=False)[0], (401,403))
+        status, body=self.request('GET', url)
+        self.assertEqual(status, 200)
+        events=[json.loads(line[6:]) for line in body.decode().splitlines() if line.startswith('data: ')]
+        self.assertEqual([e['type'] for e in events], ['RUN_STARTED','RUN_FINISHED'])
+        self.assertEqual(events[-1]['outcome']['type'], 'cancelled')
+        self.assertNotIn(b'request_key', body)
+        self.assertEqual(self.request('GET', url, headers={'Last-Event-ID':'end'}), (200,b''))
+        self.assertEqual(self.request('GET', url, headers={'Last-Event-ID':'bad-cursor'})[0], 400)
+        self.assertEqual(self.request('GET', '/api/jobs/'+'0'*32+'/agui')[0], 404)
+        schema=self.server.server.config.app.openapi()
+        self.assertIn('/api/jobs/{jid}/agui', schema['paths'])
 
     def test_service_discovery_is_authenticated_and_rejects_endpoint_overrides(self):
         with mock.patch('mcdxkit.document_services.ServiceManager.discover', return_value={'service': {'state': 'runtime_stopped'}}) as discover:
@@ -104,6 +167,37 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(self.request('POST', '/api/documents/show', {'project': '../escape'})[0], 400)
         self.assertEqual(self.request('GET', '/documents')[0], 200)
 
+    def test_answer_audit_requires_session_and_project_ownership_and_is_in_openapi(self):
+        from mcdxkit.documents import DocumentWorkflow
+        flow = DocumentWorkflow(self.root / 'results' / '.documents')
+        pid = flow.create('Audit boundary')['id']
+        other = flow.create('Other library')['id']
+        aid = 'a' * 32
+        with flow.edit(pid) as state:
+            state['answers'].append({'id': aid, 'request': 'Synthetic question', 'created': 1,
+                                     'evidence': [], 'content': {'sections': [], 'gaps': []}})
+        path = f'/api/documents/{pid}/answers/{aid}/audit'
+        before = flow.get(pid)
+        self.assertEqual(self.request('GET', path, authenticated=False)[0], 403)
+        self.assertEqual(self.request('GET', path, headers={'Origin': 'https://evil.test'})[0], 403)
+        self.assertEqual(self.request('GET', f'/api/documents/{other}/answers/{aid}/audit')[0], 404)
+        self.assertEqual(self.request('GET', f'/api/documents/{pid}/answers/'+ 'b'*32 + '/audit')[0], 404)
+        status, receipt = self.request('GET', path)
+        self.assertEqual(status, 200)
+        self.assertEqual(receipt['answer']['id'], aid)
+        self.assertEqual(receipt['project']['id'], pid)
+        self.assertEqual(flow.get(pid), before)
+        conn = http.client.HTTPConnection('127.0.0.1', self.server.server_port, timeout=5)
+        try:
+            conn.request('GET', path, headers={'X-MCDXKit-Token': self.token})
+            response = conn.getresponse()
+            response.read()
+            self.assertEqual(response.getheader('Content-Disposition'), f'attachment; filename="mcdxkit-answer-{aid}-audit.json"')
+        finally:
+            conn.close()
+        schema = self.server.server.config.app.openapi()
+        self.assertIn('/api/documents/{pid}/answers/{aid}/audit', schema['paths'])
+
     def test_document_library_needs_no_inputs_and_connects_existing_uploads(self):
         status, library = self.request('POST', '/api/documents/create', {'title': 'Independent library'})
         self.assertEqual(status, 200, library)
@@ -117,7 +211,7 @@ class ServerTests(unittest.TestCase):
         status, linked = self.request('POST', '/api/documents/connect', {'project':pid, 'id':raw['id'], 'cases':[1,7]})
         self.assertEqual(status, 200, linked)
         self.assertEqual(linked['sources'][0]['id'], source['id'])
-        self.assertEqual(linked['options']['cases'], [1,7])
+        self.assertEqual(linked['calculation']['options']['cases'], [1,7])
         status, restored = self.request('POST', '/api/documents/calculation', {'project':pid})
         self.assertEqual(status, 200, restored)
         self.assertEqual(restored['options']['cases'], [1,7])
@@ -125,7 +219,13 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(status, 200, inspection)
         self.assertEqual(inspection['envelope']['P'], 140)
 
-        self.assertEqual(self.request('POST', '/api/documents/connect', {'project':pid, 'id':raw['id']})[0], 400)
+        # A second calculation is allowed; the existing one must then be named explicitly.
+        status, second = self.request('POST', '/api/documents/connect', {'project':pid, 'id':raw['id'], 'cases':[1]})
+        self.assertEqual(status, 200, second)
+        status, error = self.request('POST', '/api/documents/calculation', {'project':pid})
+        self.assertEqual(status, 400); self.assertIn('Choose which calculation', error['error'])
+        status, chosen = self.request('POST', '/api/documents/calculation', {'project':pid, 'calculation':second['calculation']['id']})
+        self.assertEqual((status, chosen['options']['cases']), (200, [1]))
 
     def test_headerless_upload_requires_case_selection_then_calculates(self):
         status, uploaded = self.upload('summary.txt', summary_only().encode())
@@ -181,7 +281,7 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(status, 200, preview)
         self.assertTrue(preview['preview'])
         self.assertEqual(len([c for c in preview['diff']['changes'] if c['kind'] == 'changed']), 4)
-        self.assertFalse((self.root / 'results').exists())
+        self.assertEqual([p.name for p in (self.root / 'results').iterdir()], ['.documents'])
         _, source = self.request('POST', '/api/view', {'id': uploaded['id']})
         self.assertEqual(source['text'], report())
         status, converted = self.request('POST', '/api/convert', {'id': uploaded['id'], 'cases': [1, 7]})
@@ -268,7 +368,7 @@ class ServerTests(unittest.TestCase):
         rows = {(r['report'], r['case_id']): r for r in csv.DictReader(io.StringIO(value['csv']))}
         self.assertEqual(rows['b.gp11t', '1']['governs'], 'Vz')
         self.assertEqual(rows['a.txt', '7']['P_kip'], '140')
-        self.assertFalse((self.root / 'results').exists())
+        self.assertEqual([p.name for p in (self.root / 'results').iterdir()], ['.documents'])
         self.assertEqual(self.request('POST', '/api/summary', {'reports': reports[:1]})[0], 400)
         self.assertEqual(self.request('POST', '/api/summary', {'reports': [reports[0], reports[0]]})[0], 400)
         _, third = self.upload('copy.txt')
@@ -301,7 +401,10 @@ class ServerTests(unittest.TestCase):
     def test_static_ui_and_missing_template_error(self):
         status, html = self.request('GET', '/')
         self.assertEqual(status, 200)
-        self.assertIn(b'webkitdirectory', html)
+        self.assertIn(b'/workspace-assets/workspace.js', html)
+        self.assertEqual(self.request('GET', '/workspace-assets/workspace.js')[0], 200)
+        self.assertEqual(self.request('GET', '/workspace-assets/unknown.js')[0], 404)
+        self.assertIn(b'webkitdirectory', self.request('GET', '/convert')[1])
         self.assertEqual(self.request('GET', '/app.js')[0], 200)
         self.assertEqual(self.request('GET', '/pdfjs/pdf.mjs')[0], 200)
         self.assertEqual(self.request('GET', '/pdfjs/%2e%2e/server.py')[0], 404)

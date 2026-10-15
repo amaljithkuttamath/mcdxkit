@@ -38,3 +38,9 @@ crash.log
 .documents/
 .credentials.json
 .credentials-*
+# Sign in with ChatGPT host ID, registrations and tokens (owner-only).
+.chatgpt/
+
+frontend/node_modules/
+!frontend/index.html
+!src/mcdxkit/web/workspace-dist/index.html
