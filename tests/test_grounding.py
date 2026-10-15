@@ -101,7 +101,7 @@ class GroundingContract(unittest.TestCase):
         result = self.run_gate(heading=heading, verifier=verify)
         grounding, sections, assessment, _ = result
         self.assertNotIn(heading, json.dumps(self.published(result)))
-        self.assertEqual(sections[0]['heading'], 'Confirmed statements')
+        self.assertEqual(sections[0]['heading'], '')
         self.assertEqual((grounding['status'], grounding['unconfirmed_statements'], assessment['status']), ('grounded', 1, 'partial'))
         self.assertEqual(grounding['_unconfirmed'], [{'text': heading, 'reasons': ['the check did not find it stated in the cited passages']}])
 

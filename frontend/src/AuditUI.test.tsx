@@ -22,10 +22,21 @@ function setup(answer=record()){
   render(<Ask project={project} jobs={[]} onSend={vi.fn()} onStop={vi.fn()} onSource={source} onSources={vi.fn()} onWorkflow={vi.fn()}/>);
   return source;
 }
+// How an answer was checked sits behind one Details toggle; the answer itself comes first.
+const details=()=>userEvent.click(screen.getByRole('button',{name:'Details'}));
+
+test('the answer comes first; checking details stay hidden until asked for',async()=>{
+  setup();
+  expect(screen.getByText(/2 inches/,{selector:'.cx-section *'})).toBeVisible();
+  expect(screen.getByText(/From your project documents · not an engineering review/)).toBeVisible();
+  for(const internal of ['Model-checked','Sources and checks','Download audit record'])expect(screen.getByText(internal)).not.toBeVisible();
+  await details();
+  expect(screen.getByText('Model-checked')).toBeVisible();
+});
 
 test('statement evidence opens the original page at the exact quoted passage',async()=>{
   const source=setup();
-  expect(screen.getByText('Model-checked')).toBeVisible();
+  await details();
   await userEvent.click(screen.getByRole('button',{name:/Sources and checks/}));
   await userEvent.click(screen.getByRole('button',{name:'Open Requirements.pdf, page 7, at the quote for S1'}));
   expect(source).toHaveBeenLastCalledWith('source',7,'settlement shall not exceed 2 inches');
@@ -33,7 +44,7 @@ test('statement evidence opens the original page at the exact quoted passage',as
 
 test('audit download uses the authenticated helper and selected answer only',async()=>{
   vi.mocked(download).mockResolvedValue(undefined);
-  setup();
+  setup(); await details();
   await userEvent.click(screen.getByRole('button',{name:'Download audit record'}));
   await waitFor(()=>expect(download).toHaveBeenCalledWith('/api/documents/project/answers/answer/audit','mcdxkit-answer-answer-audit.json'));
   expect(await screen.findByRole('status')).toHaveTextContent('Downloaded');
@@ -41,7 +52,7 @@ test('audit download uses the authenticated helper and selected answer only',asy
 
 test('audit download failure is visible and permits a deliberate retry',async()=>{
   vi.mocked(download).mockRejectedValue(new Error('Unavailable'));
-  setup();
+  setup(); await details();
   await userEvent.click(screen.getByRole('button',{name:'Download audit record'}));
   expect(await screen.findByRole('alert')).toHaveTextContent('Audit record not downloaded');
   expect(screen.getByRole('button',{name:'Download audit record'})).toBeEnabled();
@@ -54,6 +65,9 @@ test('withheld answer keeps evidence collapsed without inventing draft text',asy
   answer.grounding={version:'grounding/2',status:'withheld',draft_withheld:true,statements:[{id:'S1',kind:'section',section:0,verdict:'unsupported',reasons:['Wrong unit']}]};
   answer.assessment={status:'insufficient',explanation:'The draft failed a source check.',conflicts:[]};
   setup(answer);
+  expect(screen.getByText(/I couldn’t confirm an answer in your project documents/)).toBeVisible();
+  expect(screen.queryByText('Wrong unit')).not.toBeVisible();
+  await details();
   expect(screen.getByText('Draft withheld')).toBeVisible();
   expect(screen.getAllByText('The draft failed a source check.').some(node=>!node.closest('[hidden]'))).toBe(true);
   expect(screen.getByRole('button',{name:'Requirements.pdf · p. 7'})).not.toBeVisible();
@@ -65,6 +79,7 @@ test('identical passage text is grouped while both original files stay reachable
   const answer=record();
   answer.evidence.push({...answer.evidence[0],id:'E2',source_id:'copy',source_name:'Requirements copy.pdf',text:'For new walls,  settlement shall not exceed 2 inches.'});
   const source=setup(answer);
+  await details();
   await userEvent.click(screen.getByText('Evidence',{selector:'summary span'}));
   expect(screen.getByText(/Same passage in 2 files/)).toBeVisible();
   await userEvent.click(screen.getByRole('button',{name:'Requirements copy.pdf · p. 7 (E2)'}));
@@ -107,11 +122,15 @@ test('a partly confirmed answer shows only confirmed statements and offers a rec
   const send=vi.fn().mockResolvedValue(undefined);
   const project:Project={id:'project',title:'Project',revision:1,sources:[],drafts:[],runs:[],calculations:[],answers:[answer]};
   render(<Ask project={project} jobs={[]} onSend={send} onStop={vi.fn()} onSource={vi.fn()} onSources={vi.fn()} onWorkflow={vi.fn()}/>);
+  // One plain line in the answer; the counts and reasons are details.
+  expect(screen.getByText(/Some points couldn’t be confirmed in your documents, so they aren’t shown/)).toBeVisible();
+  expect(screen.getByText(/1 of 3 statements confirmed/)).not.toBeVisible();
+  await userEvent.click(screen.getByRole('button',{name:'Details'}));
   const note=screen.getByText(/1 of 3 statements confirmed/).closest('.cx-unconfirmed') as HTMLElement;
   expect(note).toHaveTextContent('2 could not be confirmed in their cited passages and are not shown');
   expect(note).toHaveTextContent('2 · a number is not in the quoted text');
   expect(note).toHaveTextContent('1 · it drops the source qualifier "new"');
-  await userEvent.click(screen.getByRole('button',{name:'Recheck the rest'}));
+  await userEvent.click(screen.getByRole('button',{name:'Check again'}));
   expect(send).toHaveBeenCalledWith('Recheck the statements from your previous answer that could not be confirmed.','answer');
 });
 
@@ -120,6 +139,5 @@ test('answers checked before unconfirmed statements were kept offer no recheck',
   answer.content.sections=[];
   answer.grounding={version:'grounding/5',status:'withheld',draft_withheld:true,reason_code:'statements_unconfirmed',statements:[{id:'S1',kind:'section',section:0,verdict:'unsupported',reasons:[]}]};
   setup(answer);
-  expect(screen.getByText(/1 statement could not be confirmed/)).toBeVisible();
-  expect(screen.queryByRole('button',{name:/Recheck/})).toBeNull();
+  expect(screen.queryByRole('button',{name:'Check again'})).toBeNull();
 });

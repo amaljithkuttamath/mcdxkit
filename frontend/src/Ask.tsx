@@ -209,7 +209,7 @@ const NO_SUPPORT='the check did not find it stated in the cited passages';
 // Unconfirmed statements are kept for a recheck from grounding/6; earlier answers have nothing to recheck from.
 const recheckable=(g:Grounding)=>Number(g.version?.split('/')[1])>=6;
 
-function Unconfirmed({grounding:g,onRecheck}:{grounding:Grounding;onRecheck?:()=>void}) {
+function Unconfirmed({grounding:g}:{grounding:Grounding}) {
   const failed=(g.statements||[]).filter(s=>s.verdict!=='supported'&&s.verdict!=='structural');
   if(!failed.length)return null;
   const counts=new Map<string,number>();
@@ -220,7 +220,6 @@ function Unconfirmed({grounding:g,onRecheck}:{grounding:Grounding;onRecheck?:()=
     <p>{shown?<><strong>{(g.checked_statements??failed.length)-failed.length} of {g.checked_statements??failed.length} statements confirmed.</strong> {failed.length} could not be confirmed in their cited passages and {failed.length===1?'is':'are'} not shown:</>
       :<>{failed.length} {failed.length===1?'statement':'statements'} could not be confirmed:</>}</p>
     <ul>{reasons.slice(0,5).map(([reason,n])=><li key={reason}>{n} · {reason}</li>)}</ul>
-    {onRecheck&&recheckable(g)&&<Button className="cx-secondary" onPress={onRecheck}>{shown?'Recheck the rest':'Recheck these statements'}</Button>}
   </div>;
 }
 const NOT_CHECKED_DETAIL='This answer was saved before statement checks existed. Citation IDs were matched to retrieved passages and stated numbers were compared literally with the cited text. Open the citations to confirm each statement.';
@@ -246,43 +245,33 @@ const ACTIONS:Record<WorkflowAction,string>={add_files:'Add files',index_documen
 
 function Answer({projectId,answer,turnRef,onSource,onWorkflow,onSaveOffer,onRecheck,saving,activity}:{projectId:string;answer:Draft;turnRef?:Ref<HTMLElement>;activity?:Job['activity'];onSource:SourceHandler;onWorkflow:(action:WorkflowAction)=>void;onSaveOffer?:(answer:string)=>void;onRecheck?:()=>void;saving?:boolean}) {
   const index=useMemo(()=>citationIndex(answer.evidence),[answer.evidence]);
+  // The answer comes first. How it was checked (status, coverage, limitations, model, steps, audit) is one
+  // "Details" toggle away; only cautions that change how the answer may be used stay in the main column.
+  const [open,setOpen]=useState(false);
   const [panel,setPanel]=useState<''|'sources'|'activity'>('');
-  const sourcesId=useId(),activityId=useId();
+  const detailsId=useId(),sourcesId=useId(),activityId=useId();
   const g=answer.grounding,state=g?.status;
   const offer=answer.extraction_offer,unsupported=answer.audit?.unsupported_numbers||[],warn=unsupported.length>0;
   const research=answer.kind!=='workflow';
-  // The assessment chip is the model's status on earlier answers, or the server-adjusted status on published ones.
   const status=answer.assessment&&research&&(!g||state==='grounded')?answer.assessment.status:null;
   const coverage=answer.coverage,partial=g?.coverage==='partial'||(!!coverage&&(coverage.ready<coverage.total||coverage.excluded.length>0));
   const gaps=answer.content.gaps;
-  // Withheld and abstained answers show their explanation, gaps and retrieved evidence in the main column.
   const unpublished=state==='withheld'||state==='abstained';
   const precedence=state==='grounded'?g?.scope?.precedence:undefined;
+  const hidden=(g?.statements||[]).filter(s=>s.verdict!=='supported'&&s.verdict!=='structural').length;
+  const canRecheck=!!onRecheck&&!!g&&recheckable(g)&&(state==='grounded'||g.reason_code==='statements_unconfirmed')&&hidden>0;
   const toggle=(name:'sources'|'activity')=>setPanel(panel===name?'':name);
-  const details=<Button className="cx-link" aria-expanded={panel==='sources'} aria-controls={sourcesId} onPress={()=>setPanel('sources')}>Details</Button>;
-  const notes=[warn&&'warn',partial&&'partial',precedence&&'precedence',!unpublished&&gaps.length>0&&'gaps'].filter(Boolean);
   return <article className="cx-turn" ref={turnRef}>
     <UserMessage text={answer.request}/>
     <div className="cx-answer">
-      <div className="cx-byline"><span className="cx-byline-name">MCDXKit</span>
-        {g&&<span className={'cx-status g-'+g.status} title={BADGE_DETAIL[g.status]}>{BADGE[g.status]}</span>}
-        {g?.coverage==='partial'&&<span className="cx-status partial">Partial search</span>}
-        {status&&<span className={'cx-status '+status} title={g?'Status set by MCDXKit from the checked answer and search coverage':'The model’s own assessment, not an independent check'}>{STATUS[status]}</span>}
-        {!g&&research&&answer.evidence.length>0&&<span className="cx-status unchecked" title={NOT_CHECKED_DETAIL}>{NOT_CHECKED}</span>}<ModelUsed id={answer.model}/></div>
-      {notes.length>0&&<ul className="cx-notes" aria-label="Before relying on this answer">
-        {warn&&<li className="warn"><span><strong>Check in the source:</strong> {unsupported.flatMap(u=>u.values).slice(0,8).join(', ')} {unsupported.flatMap(u=>u.values).length===1?'was':'were'} not found word-for-word in the cited text.</span>{notes[0]==='warn'&&details}</li>}
-        {partial&&<li><span>{coverage?`Searched ${coverage.ready} of ${coverage.total} documents${coverage.excluded.length?`; ${coverage.excluded.length} not searched`:''}.`:'Some documents were not searchable.'}</span>{notes[0]==='partial'&&details}</li>}
-        {precedence&&<li><span className="cx-note-clamp">{precedence}</span>{notes[0]==='precedence'&&details}</li>}
-        {!unpublished&&gaps.length>0&&<li><span className="cx-note-clamp">{gaps.length===1?'Limitation':`${gaps.length} limitations`}: {gaps[0]}</span>{notes[0]==='gaps'&&details}</li>}
-      </ul>}
-      {!answer.content.sections.length&&answer.assessment&&<Prose index={index} onSource={onSource}>{answer.assessment.explanation}</Prose>}
-      {unpublished&&<div className="cx-unpublished">
-        {state==='withheld'&&<p className="cx-unpublished-note">The draft wasn’t published because it didn’t pass the statement check. There is no draft to show; the original evidence is under Evidence below.</p>}
-        {gaps.length>0&&<ul className="cx-gaps">{gaps.map((gap,i)=><li key={i}>{gap}</li>)}</ul>}
-      </div>}
+      <div className="cx-byline"><span className="cx-byline-name">MCDXKit</span></div>
+      {warn&&<p className="cx-caution"><strong>Check in the source:</strong> {unsupported.flatMap(u=>u.values).slice(0,8).join(', ')} {unsupported.flatMap(u=>u.values).length===1?'was':'were'} not found word-for-word in the cited text.</p>}
+      {unpublished&&<p className="cx-plain">{state==='withheld'?'I couldn’t confirm an answer in your project documents.':'I didn’t find this in your project documents.'}{answer.evidence.length>0?' The most relevant pages are below.':''}</p>}
+      {!unpublished&&!answer.content.sections.length&&answer.assessment&&<Prose index={index} onSource={onSource}>{answer.assessment.explanation}</Prose>}
       {answer.content.sections.map((section,i)=><section key={i} className="cx-section">{section.heading&&<h3>{section.heading}</h3>}<Prose index={index} sectionIds={section.evidence_ids} onSource={onSource}>{section.body}</Prose></section>)}
-      {g&&(state==='grounded'||g.reason_code==='statements_unconfirmed')&&<Unconfirmed grounding={g} onRecheck={onRecheck}/>}
       {!!answer.assessment?.conflicts.length&&<div className="cx-conflicts" role="note"><p className="cx-note-title">Sources disagree</p><ul>{answer.assessment.conflicts.map((c,i)=><li key={i}>{c}</li>)}</ul></div>}
+      {hidden>0&&(state==='grounded'||canRecheck)&&<p className="cx-hidden-note">{state==='grounded'?'Some points couldn’t be confirmed in your documents, so they aren’t shown.':'Its points couldn’t be confirmed in your documents.'}
+        {canRecheck&&<> <Button className="cx-link" onPress={onRecheck}>Check again</Button></>}</p>}
       {offer&&!answer.extraction_ids?.length&&onSaveOffer&&<div className="cx-proposal">
         <div className="cx-proposal-head"><strong>Save these values for review?</strong><span className="cx-tag">Proposal, not saved</span></div>
         <p>Confirming extracts values and conditions from {offer.source_name}, {offer.pages.length===1?'page':'pages'} {offer.pages.join(', ')} and adjacent pages, as unreviewed requirements. Calculation inputs stay unchanged.</p>
@@ -294,14 +283,30 @@ function Answer({projectId,answer,turnRef,onSource,onWorkflow,onSaveOffer,onRech
         <Button className="cx-secondary" onPress={()=>onWorkflow('review_requirements')}>Review extracted requirements</Button>
       </div>}
       {!!answer.actions?.length&&<div className="cx-actions">{answer.actions.map(action=><Button key={action} className="cx-secondary" onPress={()=>onWorkflow(action)}>{ACTIONS[action]}</Button>)}</div>}
-      {answer.evidence.length>0&&<EvidenceDisclosure answer={answer} index={index} onSource={onSource} flat={unpublished}/>}
-      <div className="cx-foot">
-        <Button className="cx-foot-btn" aria-expanded={panel==='sources'} aria-controls={sourcesId} onPress={()=>toggle('sources')}>Sources and checks</Button>
-        {!!activity?.length&&<Button className="cx-foot-btn" aria-expanded={panel==='activity'} aria-controls={activityId} onPress={()=>toggle('activity')}>Activity <span className="cx-count">{activity.length} {activity.length===1?'step':'steps'}</span></Button>}
-        <AuditDownload projectId={projectId} answerId={answer.id}/>
+      {unpublished&&answer.evidence.length>0&&<EvidenceDisclosure answer={answer} index={index} onSource={onSource} flat={unpublished}/>}
+      <p className="cx-provenance">{research?'From your project documents · not an engineering review':'Guidance from your project’s current state'} · <Button className="cx-link" aria-expanded={open} aria-controls={detailsId} onPress={()=>setOpen(!open)}>Details</Button></p>
+      <div id={detailsId} className="cx-details" hidden={!open}>
+        <div className="cx-byline">
+          {g&&<span className={'cx-status g-'+g.status} title={BADGE_DETAIL[g.status]}>{BADGE[g.status]}</span>}
+          {g?.coverage==='partial'&&<span className="cx-status partial">Partial search</span>}
+          {status&&<span className={'cx-status '+status} title={g?'Status set by MCDXKit from the checked answer and search coverage':'The model’s own assessment, not an independent check'}>{STATUS[status]}</span>}
+          {!g&&research&&answer.evidence.length>0&&<span className="cx-status unchecked" title={NOT_CHECKED_DETAIL}>{NOT_CHECKED}</span>}<ModelUsed id={answer.model}/></div>
+        {unpublished&&answer.assessment&&<p className="cx-unpublished-note">{answer.assessment.explanation}</p>}
+        {(partial||precedence||gaps.length>0)&&<ul className="cx-notes" aria-label="Before relying on this answer">
+          {partial&&<li><span>{coverage?`Searched ${coverage.ready} of ${coverage.total} documents${coverage.excluded.length?`; ${coverage.excluded.length} not searched`:''}.`:'Some documents were not searchable.'}</span></li>}
+          {precedence&&<li><span>{precedence}</span></li>}
+          {gaps.map((gap,i)=><li key={i}><span>{gap}</span></li>)}
+        </ul>}
+        {g&&(state==='grounded'||g.reason_code==='statements_unconfirmed')&&<Unconfirmed grounding={g}/>}
+        {!unpublished&&answer.evidence.length>0&&<EvidenceDisclosure answer={answer} index={index} onSource={onSource} flat={false}/>}
+        <div className="cx-foot">
+          <Button className="cx-foot-btn" aria-expanded={panel==='sources'} aria-controls={sourcesId} onPress={()=>toggle('sources')}>Sources and checks</Button>
+          {!!activity?.length&&<Button className="cx-foot-btn" aria-expanded={panel==='activity'} aria-controls={activityId} onPress={()=>toggle('activity')}>Activity <span className="cx-count">{activity.length} {activity.length===1?'step':'steps'}</span></Button>}
+          <AuditDownload projectId={projectId} answerId={answer.id}/>
+        </div>
+        <div id={sourcesId} className="cx-panel" hidden={panel!=='sources'}><Provenance answer={answer} index={index} onSource={onSource}/></div>
+        {!!activity?.length&&<div id={activityId} className="cx-panel" hidden={panel!=='activity'}><Timeline activity={activity} label="Activity steps" onWorkflow={onWorkflow}/></div>}
       </div>
-      <div id={sourcesId} className="cx-panel" hidden={panel!=='sources'}><Provenance answer={answer} index={index} onSource={onSource}/></div>
-      {!!activity?.length&&<div id={activityId} className="cx-panel" hidden={panel!=='activity'}><Timeline activity={activity} label="Activity steps" onWorkflow={onWorkflow}/></div>}
     </div>
   </article>;
 }

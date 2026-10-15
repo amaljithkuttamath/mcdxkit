@@ -558,7 +558,7 @@ def verifier_failure_code(exc):
 
 
 _NO_SUPPORT = 'the check did not find it stated in the cited passages'
-UNCONFIRMED_HEADING = 'Confirmed statements'
+UNCONFIRMED_HEADING = ''      # no heading: an unconfirmed one is dropped, never replaced by a label
 
 
 def _confirmed_only(sections, units, results, payload):
