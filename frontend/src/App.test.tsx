@@ -1,4 +1,4 @@
-import {render,screen,waitFor} from '@testing-library/react';
+import {render,screen,waitFor,within} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
 import {test,expect,vi,beforeEach,afterEach} from 'vitest';
@@ -31,9 +31,9 @@ test('project tasks stay central and original sources open only on demand', asyn
 });
 
 
-function scenario({empty=false,inspectError=false,failedRun=false,jobs=[] as any[],two=false,library=[] as any[]}={}){
+function scenario({empty=false,inspectError=false,failedRun=false,jobs=[] as any[],two=false,library=[] as any[],inputs=[] as any[]}={}){
   let project:any={id:'c'.repeat(32),title:'Two-file calculation',revision:1,sources:[],answers:[],drafts:[],runs:[],calculations:[]};
-  const calculation={id:'d'.repeat(32),name:'Loads.txt + Template.mcdx',created:1,report_name:'Loads.txt',template_name:'Template.mcdx',template_inputs:{inputs:[],input_map:{}},options:{cases:[2],input_map:null,load_source:'local'}};
+  const calculation={id:'d'.repeat(32),name:'Loads.txt + Template.mcdx',created:1,report_name:'Loads.txt',template_name:'Template.mcdx',template_inputs:{inputs,input_map:{}},options:{cases:[2],input_map:null,load_source:'local'}};
   const second={...calculation,id:'e'.repeat(32),name:'Service loads',options:{cases:[7],input_map:null,load_source:'local'}};
   if(two)project={...project,calculations:[calculation,second],runs:[
     {id:'r1',created:1,draft_id:null,calculation_id:calculation.id,calculated:true},{id:'r2',created:2,draft_id:null,calculation_id:second.id,calculated:true}]};
@@ -51,7 +51,7 @@ function scenario({empty=false,inspectError=false,failedRun=false,jobs=[] as any
     if(path==='/api/templates')return response({templates:library});
     if(path.startsWith('/api/templates/upload'))return response({id:'t'.repeat(64),name:'Template.mcdx'});
     if(path.startsWith('/api/templates/')&&path.endsWith('/use'))return response({id:'template',name:'Template.mcdx',template_id:'t'.repeat(64)});
-    if(path==='/api/inspect')return inspectError?response({error:'Incompatible template dimensions'},400):response({cases:[{id:2,name:'Local case'}],selected_cases:[2],envelope:{},template_inputs:{inputs:[],input_map:{}},template_validation:{status:'ready',errors:[],warnings:[]}});
+    if(path==='/api/inspect')return inspectError?response({error:'Incompatible template dimensions'},400):response({cases:[{id:2,name:'Local case'}],selected_cases:[2],envelope:{},template_inputs:{inputs,input_map:{}},template_validation:{status:'ready',errors:[],warnings:[]}});
     if(path==='/api/documents/connect'){
       project={...project,calculations:[calculation]};
       return response({...project,calculation});
@@ -183,7 +183,7 @@ test('a project holds several calculations; outputs and calculate follow the sel
   expect(screen.getByRole('combobox',{name:'Calculation run'}).querySelectorAll('option')).toHaveLength(1);
   await userEvent.selectOptions(picker,'d'.repeat(32));
   expect(screen.getByText(/Loads.txt \+ Template.mcdx · 2 calculations/)).toBeVisible();
-  await userEvent.click(screen.getByRole('button',{name:'Calculate'}));
+  await userEvent.click(screen.getByRole('button',{name:'Calculate this'}));
   await waitFor(()=>expect(calls.find(c=>c.path==='/api/jobs'&&c.data?.action==='calculate')?.data.payload).toEqual({calculation:'d'.repeat(32)}));
   // Adding another calculation opens an empty two-file slot without touching the existing ones.
   await userEvent.selectOptions(picker,'new');
@@ -225,34 +225,93 @@ test('outputs render the Mathcad file the engineer downloads',async()=>{
   expect(calls.find(c=>c.path==='/api/view'&&c.data?.id==='delivered')).toBeTruthy();
 });
 
-test('Calculate all sits beside the Calculation picker and pins every calculation in the project',async()=>{
+test('Calculate all sits beside Calculate this and pins every calculation in the project',async()=>{
   const {calls}=scenario({two:true});
-  const button=await screen.findByRole('button',{name:'Calculate all'});
-  expect(screen.getByRole('combobox',{name:'Calculation'}).closest('.task-actions')).toContainElement(button);
+  const button=await screen.findByRole('button',{name:'Calculate all (2)'});
+  const single=screen.getByRole('button',{name:'Calculate this'});
+  expect(button.closest('.header-actions')).toContainElement(single);
   await userEvent.click(button);
   await waitFor(()=>expect(calls.find(c=>c.path==='/api/jobs'&&c.data?.action==='calculate_all')?.data).toEqual(
     expect.objectContaining({project:'c'.repeat(32),action:'calculate_all',payload:{calculations:['d'.repeat(32),'e'.repeat(32)]},request_key:expect.any(String)})));
+  expect(await screen.findByRole('heading',{name:'Calculated outputs'})).toBeVisible();
 });
 
 test('Calculate all is offered only with several calculations and waits for running calculation work',async()=>{
   scenario();
   await screen.findByRole('heading',{name:'Calculation inputs'});
-  expect(screen.queryByRole('button',{name:'Calculate all'})).toBeNull();
+  expect(screen.queryByRole('button',{name:/Calculate all/})).toBeNull();
   vi.unstubAllGlobals();
   scenario({two:true,jobs:[{id:'running',action:'calculate_all',state:'running',stage:'Finished 1 of 2 calculations',uncertain:false,
     activity:[{time:1,message:'Finished 0 of 2 calculations',detail:{finished:0,total:2}},{time:2,message:'Finished 1 of 2 calculations',detail:{finished:1,total:2}}]}]});
-  expect(await screen.findByRole('button',{name:'Calculate all'})).toBeDisabled();
+  expect(await screen.findByRole('button',{name:'Calculate all (2)'})).toBeDisabled();
   const bar=screen.getByRole('progressbar',{name:'Finished 1 of 2 calculations'});
   expect(bar).toHaveAttribute('value','1');expect(bar).toHaveAttribute('max','2');
 });
 
-test('Outputs keeps a finished Calculate all with a failed calculation visible, naming the failure',async()=>{
+const finishedAll=(failed:boolean)=>({id:'all',action:'calculate_all',state:'succeeded',stage:'Complete',uncertain:false,created:10,result:{total:2,succeeded:failed?0:1,skipped:1,failed:failed?1:0,calculations:[
+  {calculation_id:'d'.repeat(32),name:'Loads.txt + Template.mcdx',status:'skipped',run_id:'r1',error:null},
+  {calculation_id:'e'.repeat(32),name:'Service loads',status:failed?'failed':'succeeded',run_id:failed?null:'r2',error:failed?'Synthetic engine failure':null}]}});
+
+test('Outputs summarises the latest Calculate all, names failures and marks them in the picker',async()=>{
   history.replaceState(null,'','/?view=outputs');
-  scenario({two:true,jobs:[{id:'all',action:'calculate_all',state:'succeeded',stage:'Complete',uncertain:false,result:{total:2,succeeded:1,skipped:0,failed:1,calculations:[
-    {calculation_id:'d'.repeat(32),name:'Loads.txt + Template.mcdx',status:'succeeded',run_id:'r1',error:null},
-    {calculation_id:'e'.repeat(32),name:'Service loads',status:'failed',run_id:null,error:'Synthetic engine failure'}]}}]});
-  const alert=await screen.findByRole('alert');
-  expect(alert).toHaveTextContent('Calculate all: 1 calculated, 0 already calculated, 1 failed');
-  expect(alert).toHaveTextContent('Service loads: Synthetic engine failure');
-  expect(alert).not.toHaveTextContent('Saved');
+  scenario({two:true,jobs:[finishedAll(true)]});
+  const summary=await screen.findByRole('region',{name:'Calculate all results'});
+  expect(summary).toHaveTextContent('Calculate all · 0 calculated, 1 already calculated, 1 failed');
+  expect(summary).toHaveTextContent('a saved run with the same inputs and engine was reused');
+  expect(screen.getByRole('alert')).toHaveTextContent('Synthetic engine failure');
+  const picker=screen.getByRole('combobox',{name:'Calculation'});
+  expect([...picker.querySelectorAll('option')].map(o=>o.textContent)).toEqual(['Loads.txt + Template.mcdx · calculated','Service loads · failed','+ New calculation']);
+  // A row opens its calculation; Dismiss hides the summary.
+  await userEvent.click(within(summary).getByRole('button',{name:'Loads.txt + Template.mcdx'}));
+  expect(picker).toHaveValue('d'.repeat(32));
+  await userEvent.click(within(summary).getByRole('button',{name:'Dismiss'}));
+  expect(screen.queryByRole('region',{name:'Calculate all results'})).toBeNull();
+});
+
+test('a fully successful Calculate all still leaves a summary',async()=>{
+  history.replaceState(null,'','/?view=outputs');
+  scenario({two:true,jobs:[finishedAll(false)]});
+  const summary=await screen.findByRole('region',{name:'Calculate all results'});
+  expect(summary).toHaveTextContent('1 calculated, 1 already calculated, 0 failed');
+  expect(screen.queryByRole('alert')).toBeNull();
+});
+
+test('a template shows its inputs and worksheet side by side',async()=>{
+  history.replaceState(null,'','/?view=templates');
+  const template={id:'t'.repeat(64),name:'Pile cap.mcdx',sha256:'t'.repeat(64),bytes:10,created:1,archived:false,version:1,calculations:0,mapping_basis:null,missing_load_inputs:[],
+    inputs:[{variable:'P_a',value:10,unit:'kip',component:'P',status:'matched',expression:'P_a := 10 kip'}]};
+  scenario({empty:true,library:[template]});
+  const inputs=await screen.findByRole('region',{name:'Template inputs'});
+  const sheet=screen.getByRole('region',{name:'Template worksheet'});
+  expect(inputs.parentElement).toBe(sheet.parentElement);
+  expect(inputs.parentElement).toHaveClass('template-panes');
+  expect(within(inputs).getByRole('heading',{name:'Inputs · 1'})).toBeVisible();
+  expect(within(inputs).getByText('P_a')).toBeVisible();
+});
+
+const searchable=[{variable:'P_a',value:10,unit:'kip',component:'P',status:'matched',expression:'P_a := 10 kip'},
+  {variable:'M_z',value:4,unit:'kip*ft',component:'Mz',status:'matched',expression:'M_z := 4 kip*ft'},
+  {variable:'n_z',value:3,unit:'1',component:null,status:'retained',expression:'n_z := 3'}];
+
+test('calculation inputs can be searched by variable, unit or load source',async()=>{
+  history.replaceState(null,'','/?view=inputs');
+  scenario({two:true,inputs:searchable});
+  const search=await screen.findByRole('searchbox',{name:'Search inputs'});
+  const rows=()=>screen.getAllByRole('row').slice(1).map(r=>r.querySelector('strong')?.textContent);
+  expect(rows()).toEqual(['P_a','M_z','n_z']);
+  await userEvent.type(search,'kip');
+  expect(rows()).toEqual(['P_a','M_z']);
+  expect(screen.getByText('2 of 3 inputs')).toBeVisible();
+  await userEvent.clear(search);await userEvent.type(search,'mz');
+  expect(rows()).toEqual(['M_z']);
+  await userEvent.clear(search);await userEvent.type(search,'nothing here');
+  expect(screen.getByText(/No inputs match/)).toBeVisible();
+});
+
+test('template inputs can be searched in the library',async()=>{
+  history.replaceState(null,'','/?view=templates');
+  scenario({empty:true,library:[{id:'t'.repeat(64),name:'Pile cap.mcdx',sha256:'t'.repeat(64),bytes:10,created:1,archived:false,version:1,calculations:0,mapping_basis:null,missing_load_inputs:[],inputs:searchable}]});
+  const pane=await screen.findByRole('region',{name:'Template inputs'});
+  await userEvent.type(within(pane).getByRole('searchbox',{name:'Search inputs'}),'n_');
+  expect(within(pane).getAllByRole('row').slice(1).map(r=>r.querySelector('strong')?.textContent)).toEqual(['n_z']);
 });

@@ -1,19 +1,32 @@
 import {Button, Checkbox} from 'react-aria-components';
 import type {CalculateAllResult, Fact, Job, Source} from './types';
 
+const STATUS_LABEL={succeeded:'Calculated',skipped:'Already calculated',failed:'Failed'};
+
 export function JobStatus({job,onCancel}:{job:Job;onCancel:()=>void}) {
   const active=['queued','running'].includes(job.state);
   // Measured progress only: a determinate bar needs counts the backend recorded (finished of total).
   const measured=[...(job.activity||[])].reverse().find(a=>typeof a.detail?.total==='number'&&typeof a.detail?.finished==='number')?.detail;
-  const all=job.action==='calculate_all'&&job.state==='succeeded'?job.result as CalculateAllResult:null;
-  const problems=all?.calculations.filter(c=>c.status==='failed')||[];
-  return <div className={'job-status '+job.state+(problems.length?' failed':'')} role={job.state==='failed'||problems.length?'alert':'status'}>
-    <div><strong>{all?`Calculate all: ${all.succeeded} calculated, ${all.skipped} already calculated, ${all.failed} failed`:job.stage}</strong>{job.error&&<p>{job.error}</p>}
-    {problems.map(c=><p key={c.calculation_id}>{c.name}: {c.error}</p>)}
+  return <div className={'job-status '+job.state} role={job.state==='failed'?'alert':'status'}>
+    <div><strong>{job.stage}</strong>{job.error&&<p>{job.error}</p>}
     {job.uncertain&&<p>The remote request may have completed. Check saved results before starting another request.</p>}</div>
     {active&&<>{measured?<progress aria-label={job.stage} value={measured.finished} max={measured.total}/>:<progress aria-label={job.stage}/>}<Button onPress={onCancel}>Cancel</Button></>}
-    {job.state==='succeeded'&&!problems.length&&<span>Saved</span>}
+    {job.state==='succeeded'&&<span>Saved</span>}
   </div>;
+}
+
+// Outcome of the latest Calculate all, one row per calculation. Finishing the job is not the same as every
+// calculation succeeding, so failures stay named here until the engineer dismisses the summary.
+export function CalculateAllSummary({job,current,onSelect,onDismiss}:{job:Job;current?:string;onSelect:(id:string)=>void;onDismiss:()=>void}) {
+  const result=job.result as CalculateAllResult;
+  return <section className={'batch-summary'+(result.failed?' has-failures':'')} aria-label="Calculate all results">
+    <div className="batch-summary-head"><div><strong>Calculate all · {result.succeeded} calculated, {result.skipped} already calculated, {result.failed} failed</strong>
+      {result.skipped>0&&<p>Already calculated: a saved run with the same inputs and engine was reused, so no duplicate run was made.</p>}</div>
+      <Button onPress={onDismiss}>Dismiss</Button></div>
+    <ul>{result.calculations.map(c=><li key={c.calculation_id} className={c.status}>
+      <Button aria-current={c.calculation_id===current?'true':undefined} onPress={()=>onSelect(c.calculation_id)}>{c.name}</Button>
+      <span>{STATUS_LABEL[c.status]}</span>{c.error&&<small role="alert">{c.error}</small>}</li>)}</ul>
+  </section>;
 }
 
 // The literal source text stays verbatim; the unit recorded with the extraction is shown beside it,

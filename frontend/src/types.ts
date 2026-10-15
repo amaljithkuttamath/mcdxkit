@@ -25,6 +25,6 @@ export type Calculation = {id:string; name:string; created:number; report_name:s
 export type Project = {id:string; title:string; revision:number; sources:Source[]; extractions?:Extraction[]; answers:Draft[]; drafts:Draft[]; runs:Run[]; calculations:Calculation[]};
 export type LibraryTemplate = {id:string; name:string; sha256:string; bytes:number; created:number; archived:boolean; version:number; calculations:number;
   inputs:{variable:string; value:number; unit:string; component:string|null; status:string; expression:string}[]; mapping_basis:string|null; missing_load_inputs:string[]};
-export type Job = {id:string;activity?:Activity[]; action:string; state:string; stage:string; request?:string;parent?:string|null;error?:string|null; uncertain:boolean; result?:unknown};
+export type Job = {id:string;created?:number;activity?:Activity[]; action:string; state:string; stage:string; request?:string;parent?:string|null;error?:string|null; uncertain:boolean; result?:unknown};
 export type Inspection = {cases:{id:number; name:string}[]; selected_cases:number[]; envelope:Record<string,number>; governing?:Record<string,{value:number; case:number; case_name:string}>|null; template_inputs?:Inputs; template_validation?:{status:string; errors:string[]; warnings:string[]}};
 export type Upload = {id:string; name:string; inspection?:Inspection; template_id?:string};
