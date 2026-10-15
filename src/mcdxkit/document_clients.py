@@ -33,7 +33,8 @@ class HTTPClient:
         if parsed.scheme not in ('http', 'https') or not parsed.hostname or parsed.username or parsed.password or parsed.query or parsed.fragment:
             raise ValueError('Service URL must be an HTTP(S) base URL without credentials or query parameters.')
         if not key or '\n' in key or '\r' in key:
-            raise ValueError('A service API key is required.')
+            raise ValueError('A service API key is missing, so nothing was sent. In the browser, add it in Services; '
+                             'from the command line, set the matching variable from .env.example.')
         self.url = url.rstrip('/')
         self.key = key
         self.timeout = 90
@@ -78,7 +79,7 @@ class RAGFlow(HTTPClient):
         return result.get('data')
 
     def create_dataset(self, name):
-        if not self.embedding: raise ValueError('Set MCDXKIT_RAGFLOW_EMBEDDING_MODEL to an installed RAGFlow embedding model.')
+        if not self.embedding: raise ValueError('Choose a RAGFlow embedding model in Services, or set MCDXKIT_RAGFLOW_EMBEDDING_MODEL from the command line.')
         data = self.call('POST', '/datasets', {'name': name, 'embedding_model': self.embedding, 'parser_id': 'general'})
         if not isinstance(data, dict) or not isinstance(data.get('id'), str) or not data['id']:
             raise ValueError('RAGFlow returned no dataset ID.')
@@ -116,7 +117,8 @@ class RAGFlow(HTTPClient):
 class OpenRouter(HTTPClient):
     def __init__(self, key, model):
         if not isinstance(model, str) or not re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.:-]+:free', model):
-            raise ValueError('Set MCDXKIT_OPENROUTER_MODEL to a specific provider/model:free. Paid models and random routers are disabled.')
+            raise ValueError('Choose a specific free answer model (provider/model:free) in Services, or set MCDXKIT_OPENROUTER_MODEL from the command line. '
+                             'Paid models and random routers are disabled.')
         super().__init__('https://openrouter.ai/api/v1', key)
         self.model = model
 
@@ -209,7 +211,8 @@ class ModelConfig:
                 'hosted_drafting': True, 'paid_fallback': False}
 
     def ragflow(self):
-        if not self.url or not self.rag_key: raise ValueError('Configure MCDXKIT_RAGFLOW_URL and MCDXKIT_RAGFLOW_API_KEY (or _FILE).')
+        if not self.url or not self.rag_key: raise ValueError('RAGFlow is not configured, so nothing was sent. In the browser, open Services and add the RAGFlow URL and API key. '
+                                                           'From the command line, set MCDXKIT_RAGFLOW_URL and MCDXKIT_RAGFLOW_API_KEY (or _FILE).')
         return RAGFlow(self.url, self.rag_key, self.embedding, self.reranker)
 
     def available_models(self, key=''):
@@ -254,7 +257,8 @@ class ModelConfig:
                 'free_only': True}
 
     def writer(self):
-        if not self.router_key: raise ValueError('Configure OPENROUTER_API_KEY (or _FILE) for hosted drafting.')
+        if not self.router_key: raise ValueError('OpenRouter is not configured, so nothing was sent. In the browser, open Services and add an OpenRouter API key. '
+                                              'From the command line, set OPENROUTER_API_KEY (or _FILE).')
         return OpenRouter(self.router_key, self.model)
 
 

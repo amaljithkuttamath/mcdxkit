@@ -52,15 +52,67 @@ class JobTests(unittest.TestCase):
 
     def test_interrupted_running_job_is_uncertain_and_never_automatically_requeued(self):
         store = self.store(); job = store.submit(self.project, 'ask', {'question': 'Limit?'}, 'first')
-        token = store.claim(job['id'])
+        quiet = store.submit(self.project, 'ask', {'question': 'Other limit?'}, 'second')
+        token = store.claim(job['id']); store.claim(quiet['id'])
+        store.mark_remote(job['id'], token)          # this worker had opened a connection; the other had not
         with self.flow.connection() as db:
-            db.execute('UPDATE jobs SET updated=0 WHERE id=?', (job['id'],))
+            db.execute('UPDATE jobs SET updated=0')
         store.recover()
         restored = store.get(job['id'])
         self.assertEqual(restored['state'], 'failed')
         self.assertTrue(restored['uncertain'])
+        self.assertEqual((store.get(quiet['id'])['state'], store.get(quiet['id'])['uncertain']), ('failed', False))
         self.assertIsNone(store.claim(job['id']))
         with self.assertRaises(ValueError): store.complete(job['id'], token, {})
+
+    def execute(self, job):
+        from mcdxkit.jobs import execute
+        store = self.store(); token = store.claim(job['id'])
+        execute(str(self.root), job['id'], token)
+        return store.get(job['id'])
+
+    def test_failure_before_any_connection_is_not_uncertain(self):
+        from unittest.mock import patch
+        from mcdxkit.document_clients import ModelConfig
+        empty = ModelConfig('', '', '', '', 'test/model:free')
+        store = self.store()
+        with patch.object(ModelConfig, 'for_workspace', return_value=empty):
+            # Missing service configuration fails before any request, and says where to fix it.
+            failed = self.execute(store.submit(self.project, 'ask', {'question': 'Limit?'}, 'unconfigured'))
+            self.assertEqual((failed['state'], failed['uncertain']), ('failed', False))
+            self.assertIn('open Services', failed['error'])
+            # A job made stale after submission is rejected before any request too.
+            stale = store.submit(self.project, 'ask', {'question': 'Limit?'}, 'stale')
+            self.flow.add_source(self.project, 'new.pdf', b'%PDF-1.4\nnew source')
+            failed = self.execute(stale)
+        self.assertEqual((failed['state'], failed['uncertain']), ('failed', False))
+        self.assertIn('changed', failed['error'])
+
+    def test_failure_after_a_connection_is_uncertain(self):
+        import socket
+        from unittest.mock import patch
+        from mcdxkit.document_clients import ModelConfig
+        server = socket.create_server(('127.0.0.1', 0)); self.addCleanup(server.close)
+        def reach_service(*args, **kwargs):
+            with socket.create_connection(server.getsockname()): pass
+            raise ValueError('Model service returned HTTP 502.')
+        config = ModelConfig('', '', '', '', 'test/model:free')
+        with patch.object(ModelConfig, 'for_workspace', return_value=config), patch.object(DocumentWorkflow, 'ask', reach_service):
+            job = self.store().submit(self.project, 'ask', {'question': 'Limit?'}, 'remote')
+            failed = self.execute(job)
+        self.assertEqual((failed['state'], failed['uncertain']), ('failed', True))
+        # A later job in the same process starts unrecorded: only its own connections count.
+        with patch.object(ModelConfig, 'for_workspace', return_value=config):
+            later = self.execute(self.store().submit(self.project, 'ask', {'question': 'Other?'}, 'after'))
+        self.assertFalse(later['uncertain'])
+
+    def test_cancelling_counts_only_a_job_that_connected(self):
+        store = self.store()
+        quiet = store.submit(self.project, 'ask', {'question': 'Limit?'}, 'quiet')
+        busy = store.submit(self.project, 'ask', {'question': 'Other?'}, 'busy')
+        store.claim(quiet['id']); store.mark_remote(busy['id'], store.claim(busy['id']))
+        self.assertFalse(store.cancel(quiet['id'])['uncertain'])
+        self.assertTrue(store.cancel(busy['id'])['uncertain'])
 
     def test_source_change_after_submission_rejects_execution(self):
         store = self.store(); job = store.submit(self.project, 'ask', {'question': 'Limit?'}, 'first')

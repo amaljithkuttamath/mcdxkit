@@ -752,8 +752,11 @@ class KnowledgeAgent:
             return ChatGPTResponses(model=self.config.chatgpt_model, workspace=str(self.workspace), account=self.chatgpt_account)
         from langchain_openai import ChatOpenAI
         from .document_clients import OpenRouter
+        # Check the key first, so a missing key gets the actionable message rather than the generic client error.
+        if not self.config.router_key:
+            raise ValueError('OpenRouter is not configured, so nothing was sent. In the browser, open Services and add an OpenRouter API key. '
+                             'From the command line, set OPENROUTER_API_KEY (or _FILE).')
         OpenRouter(self.config.router_key, self.config.model)  # Shared free-model policy.
-        if not self.config.router_key: raise ValueError('Configure the OpenRouter key in Services before asking.')
         reasoning = {'exclude': True}
         # The tested default advertises optional reasoning. Do not disable
         # reasoning globally: other selectable models may require it.

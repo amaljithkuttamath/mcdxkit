@@ -21,9 +21,6 @@ from huey.registry import Message
 from .documents import MAX_CALCULATIONS, DocumentWorkflow, digest, identifier, text
 
 ACTIONS = {'ask', 'draft', 'extract', 'extract_offer', 'build', 'calculate', 'calculate_all', 'ingest', 'index_status'}
-# Local calculations: an interruption leaves nothing uncertain at a remote service.
-LOCAL = ('build', 'calculate', 'calculate_all')
-LOCAL_SQL = '(' + ','.join(f"'{a}'" for a in LOCAL) + ')'
 TERMINAL = {'succeeded', 'failed', 'cancelled'}
 STAGES = {'ask': 'Finding evidence and writing a cited answer', 'draft': 'Preparing a cited design basis',
           'extract': 'Reading selected pages and extracting requirements', 'build': 'Calculating template equations and preparing outputs'}
@@ -61,6 +58,12 @@ class JobStore:
             db.execute('''CREATE TABLE IF NOT EXISTS job_activity (
                 seq INTEGER PRIMARY KEY AUTOINCREMENT, job TEXT NOT NULL,
                 created REAL NOT NULL, message TEXT NOT NULL, kind TEXT, detail TEXT)''')
+            # A job is uncertain only once it may have reached a remote service; `remote` records the
+            # first outbound connection. Workspaces created earlier gain the column in place.
+            if 'remote' not in {row[1] for row in db.execute('PRAGMA table_info(jobs)')}:
+                try: db.execute('ALTER TABLE jobs ADD COLUMN remote INTEGER NOT NULL DEFAULT 0')
+                except sqlite3.OperationalError as exc:
+                    if 'duplicate column' not in str(exc): raise
             # Workspaces created before typed activity gain nullable columns in place.
             columns = {row[1] for row in db.execute('PRAGMA table_info(job_activity)')}
             for column in ('kind', 'detail'):
@@ -231,7 +234,7 @@ class JobStore:
     def cancel(self, jid):
         self.get(jid)
         with self.flow.connection() as db:
-            db.execute(f"UPDATE jobs SET state='cancelled',stage='Cancelled',updated=?,uncertain=(action NOT IN {LOCAL_SQL} AND state='running') WHERE id=? AND state IN ('queued','running')",
+            db.execute("UPDATE jobs SET state='cancelled',stage='Cancelled',updated=?,uncertain=remote WHERE id=? AND state IN ('queued','running')",
                        (time.time(), jid))
         return self.public(self.get(jid))
 
@@ -248,10 +251,15 @@ class JobStore:
                         'Nothing was sent to ChatGPT.', time.time(), jid))
         return True
 
-    def fail(self, jid, token, message, uncertain=False):
+    def fail(self, jid, token, message):
+        # Uncertain only if this job opened a connection: a failure before that sent nothing anywhere.
         with self.flow.connection() as db:
-            db.execute("UPDATE jobs SET state='failed',stage='Needs attention',error=?,uncertain=?,updated=? WHERE id=? AND state='running' AND owner=?",
-                       (message[:2000], int(uncertain), time.time(), jid, token))
+            db.execute("UPDATE jobs SET state='failed',stage='Needs attention',error=?,uncertain=remote,updated=? WHERE id=? AND state='running' AND owner=?",
+                       (message[:2000], time.time(), jid, token))
+
+    def mark_remote(self, jid, token):
+        with self.flow.connection() as db:
+            db.execute("UPDATE jobs SET remote=1 WHERE id=? AND owner=? AND state='running'", (jid, token))
 
     def heartbeat(self, jid, token):
         with self.flow.connection() as db:
@@ -259,7 +267,7 @@ class JobStore:
 
     def recover(self):
         with self.flow.connection() as db:
-            db.execute(f"UPDATE jobs SET state='failed',stage='Interrupted',error=?,uncertain=(action NOT IN {LOCAL_SQL}),updated=? WHERE state='running' AND updated<?",
+            db.execute("UPDATE jobs SET state='failed',stage='Interrupted',error=?,uncertain=remote,updated=? WHERE state='running' AND updated<?",
                        ('Worker interrupted. No automatic retry; a remote request may have completed. Inspect saved results before starting again.', time.time(), time.time()-60))
 
     def dispatch(self):
@@ -334,12 +342,28 @@ def supervise(root, jid):
             store.heartbeat(jid, token); STOP.wait(0.4)
     finally:
         if child is not None: terminate(child)
-        store.fail(jid, token, 'Worker interrupted. No automatic retry; inspect the project before trying again.',
-                   uncertain=store.get(jid)['action'] not in LOCAL)
+        store.fail(jid, token, 'Worker interrupted. No automatic retry; inspect the project before trying again.')
+
+
+# The job this process is executing. One audit hook per process sees every outbound socket connection
+# (urllib, httpx and the SDKs built on them), so no client can reach a service without the job recording it.
+WATCH: dict = {'job': None, 'installed': False}
+
+
+def _watch_network(event, args):
+    if event != 'socket.connect' or WATCH['job'] is None: return
+    store, jid, token = WATCH['job']; WATCH['job'] = None    # record once; the database write opens no socket
+    try: store.mark_remote(jid, token)
+    except Exception:
+        # Never let a request leave unrecorded: refusing the connection keeps "nothing was sent" true.
+        raise RuntimeError('Could not record the outbound request; nothing was sent.') from None
 
 
 def execute(root, jid, token):
     store = JobStore(root)
+    if not WATCH['installed']:
+        sys.addaudithook(_watch_network); WATCH['installed'] = True
+    WATCH['job'] = (store, jid, token)
     try:
         job = store.validate_snapshot(jid, token)
         action = job['action']
@@ -357,7 +381,9 @@ def execute(root, jid, token):
     except Exception as exc:
         # Provider transport errors are sanitized at the HTTP client boundary.
         message = str(exc) if isinstance(exc, ValueError) else 'Operation failed. Inspect the input files and service configuration.'
-        store.fail(jid, token, message, uncertain=store.get(jid)['action'] not in LOCAL)
+        store.fail(jid, token, message)
+    finally:
+        WATCH['job'] = None
 
 
 def worker(root, parent=None, channel='batch'):
