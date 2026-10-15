@@ -137,6 +137,11 @@ class GroundingContract(unittest.TestCase):
             ('Pile length is limited to the plan length [E1].', 'Pile length is not limited to the plan length.'),
             ('Piles, including but not limited to H-piles, shall be spliced [E1].',
              'Piles, including but not limited to H-piles, shall not be spliced.'),
+            # an open list is not a closed limit, in either direction
+            ('The Contractor shall supply piles limited to driven piles and micropiles as shown on the plans [E1].',
+             'The Contractor shall supply piles, including but not limited to driven piles and micropiles, as shown on the plans.'),
+            ('The Contractor shall supply piles, including but not limited to driven piles and micropiles, as shown on the plans [E1].',
+             'The Contractor shall supply piles limited to driven piles and micropiles as shown on the plans.'),
         ]
         for body, source in cases:
             with self.subTest(body=body): self.assert_negation_rejected(body, source)

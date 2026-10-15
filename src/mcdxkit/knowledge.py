@@ -329,15 +329,21 @@ def _normal(value):
     return _PROHIBITION.sub(' prohibited ', _plain(value))
 
 
-# An open list ("including, but not limited to,") widens a list; it negates nothing. Bare "not limited to" stays a negation.
+# An open list ("including, but not limited to,") widens a list; it negates nothing. Bare "not limited to" stays a
+# negation, and the exemption is dropped when either side states a closed "limited to" (open vs closed list is a flip).
 _OPEN_LIST = re.compile(r'\binclud(?:e|es|ed|ing),?\s+but\s+(?:is\s+|are\s+)?not\s+limited\s+to\b')
 _PARENTHETICAL = re.compile(r'\([^()]*\)')      # innermost balanced group; unbalanced text stays in the sentence
 
 
-def _negated(value):
-    value = _OPEN_LIST.sub(' ', _normal(value))
+def _negated(value, open_list=True):
+    value = _normal(value)
+    if open_list: value = _OPEN_LIST.sub(' ', value)
     for pattern, _ in _BOUNDS: value = re.sub(pattern, ' ', value)     # "shall not exceed" is a limit, not a negation
     return bool(_NEGATION.search(value))
+
+
+def _closed_limit(value):
+    return bool(re.search(r'\blimited\s+to\b', _OPEN_LIST.sub(' ', _normal(value))))
 
 
 _QUALIFIER_WORDS = {_stem(w) for members in QUALIFIER_GROUPS.values() for p in members.values() for w in re.findall(r'[a-z]{4,}', p)}
@@ -367,22 +373,23 @@ def _scope_reasons(claim, quotes, rows):
     reasons: list[str] = []
     for clause in _clauses(claim):
         info = {'qualifiers': _qualifiers(clause), 'negated': _negated(clause), 'words': _content(clause),
+                'closed': _closed_limit(clause), 'negated_strict': _negated(clause, open_list=False),
                 'kept': set(_quantities(clause)), 'numbers': sorted(_numbers(clause))}
         if not info['numbers'] and _EPISTEMIC.search(_normal(clause)) and not any(info['qualifiers'].values()): continue
         reasons.extend(_clause_reasons(info, _bounds(clause), sentences))
     return list(dict.fromkeys(reasons))
 
 
-def _source_negated(sentence, words):
+def _source_negated(sentence, words, open_list=True):
     """Negation of a source sentence as it applies to one statement clause (content words `words`).
 
     A negation outside parentheses governs the whole sentence. A negation inside a balanced parenthetical
     ("(skin friction excluded)") counts only when that parenthetical is relevant to the clause: it shares a
     content word with it, or it has a digit, a listed qualifier or no content word of its own (fail closed)."""
     plain = _normal(sentence)
-    if _negated(_PARENTHETICAL.sub(' ', plain)): return True
+    if _negated(_PARENTHETICAL.sub(' ', plain), open_list): return True
     for inner in _PARENTHETICAL.findall(plain):
-        if not _negated(inner): continue
+        if not _negated(inner, open_list): continue
         own = _content(_NEGATION.sub(' ', inner))
         if re.search(r'\d', inner) or any(_qualifiers(inner).values()) or not own or own & words: return True
     return False
@@ -399,7 +406,9 @@ def _sentence_problems(info, sentence):
                        f'sentence that states it ({", ".join(sorted(names))})')
         elif not wanted and group != 'obligation' and info['numbers']:
             out.append(f'it drops the source qualifier "{", ".join(sorted(names))}" that applies to the value')
-    if _source_negated(sentence, info['words']) != info['negated']: out.append('its negation differs from the source sentence that states it')
+    open_list = not (info['closed'] or _closed_limit(sentence))
+    negated = info['negated'] if open_list else info['negated_strict']
+    if _source_negated(sentence, info['words'], open_list) != negated: out.append('its negation differs from the source sentence that states it')
     if info['numbers']:
         dropped = [f'{n} {u}' for n, u in _quantities(sentence) if (n, u) not in info['kept']]
         if dropped: out.append('it drops a condition stated with the value (' + ', '.join(dropped) + ')')
