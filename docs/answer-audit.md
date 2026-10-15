@@ -2,7 +2,7 @@
 
 This page describes how MCDXKit decides what part of a new Ask answer it publishes, and the read-only audit receipt you can download for any saved answer. These checks reduce unsupported statements. They do not guarantee that an answer is correct, complete, applicable or approved.
 
-## Publication check (`grounding/5`)
+## Publication check (`grounding/8`)
 
 After the agent drafts an answer, MCDXKit splits everything it would display (section headings, body sentences and bullets, conflict statements) into numbered statements. Short layout labels (≤ 6 words, no digits, no citation, no assertive verb or negation) are recognised by a fixed server rule and are not sent for checking.
 
@@ -23,7 +23,9 @@ The character limits are size guards on the parsed report. They do not guarantee
 - every number in the statement, with its sign, appears in the quotes; recognised number–unit pairs (mm, cm, m, in, ft, kN, kip, lb, psi, ksi, psf, ksf, kPa, MPa, %, degrees, years, months, days) match as pairs; tolerance, multiplication, exponent and mixed-fraction formats are refused;
 - each clause is bound to the full source sentence that states its value. That sentence must share the clause's content and negation, keep every listed qualifier and number–unit condition stated with the value, not conflict with it, and state any minimum/maximum direction the clause uses. Listed qualifier pairs: new/existing, temporary/permanent, short/long-term, total/differential, vertical/horizontal, static/seismic, service/strength, upstream/downstream, interior/exterior; "shall/must" vs "should/may" may not conflict. Clauses that only report that sources disagree or that a point is not established are exempt.
 
-The answer is published only if every checked statement passes. Otherwise the draft is withheld: no draft text is shown, a server-written explanation is saved, and all retrieved passages remain available with their original pages. The model's free-text assessment and gaps are never shown; explanations and gaps are written by MCDXKit. Workflow guidance without document evidence is written by the server from recorded project state. Clarification questions are shown only if they contain no digits and no approval, compliance, certification, safety or pass/fail wording.
+Parenthetical predicates such as “not applicable,” “not governing” and “not approved” qualify the enclosing assertion even when those words are absent from the draft. Only explicit subject-first exclusions such as “skin friction excluded” can use the existing content-overlap rule to distinguish table subjects. This is a word-based check, not a general parser of table structure or engineering applicability.
+
+Only confirmed statements are published. If some statements fail, the answer is marked partial and the unconfirmed text is omitted. If no body statement passes, the draft is withheld. Retrieved passages remain available with their original pages. Unconfirmed text is kept separately on the server for an explicit **Check again** follow-up, never in the displayed answer or exported audit. The model's free-text assessment and gaps are never shown; explanations and gaps are written by MCDXKit. Workflow guidance without document evidence is written by the server from recorded project state. Clarification questions are shown only if they contain no digits and no approval, compliance, certification, safety or pass/fail wording.
 
 A withheld record carries `reason_code`, a fixed server-owned code: `statements_unconfirmed`, `no_checkable_statements`, `too_many_statements`, `evidence_too_large`, `verifier_unavailable`, `provider_unavailable`, `provider_rate_limited`, `provider_error`, `verifier_output_too_long`, `invalid_verifier_response` or `verifier_failed`. It never contains provider messages, raw responses, credentials or draft text.
 
