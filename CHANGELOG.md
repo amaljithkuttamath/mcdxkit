@@ -4,6 +4,8 @@ User-visible changes to MCDXKit (formerly gdcalc). The format follows [Keep a Ch
 
 ## Unreleased
 
+- Simplify ordinary Ask: preserve requested tables, open questions and conflicts, check project citation identities, and show advisory number warnings without a second model verifier or a 40-statement cutoff. Details and audit receipts distinguish citation checks from historical model checks. Requirement extraction, human review and calculation input validation remain separate.
+
 - Return to the workspace after ChatGPT consent without rejecting the browser's top-level cross-site navigation. Retain completed stream items when ChatGPT's terminal event has an empty output array so Ask receives its answers and tool calls. API, frame, Host, Origin, session and stream-completion checks remain enforced.
 - Preserve parenthetical applicability and approval exclusions in Ask's statement checks, even when a model reports support. Document drafts now enforce the same pinned DeepSeek provider and price caps as Ask and extraction.
 - Unified project workspace with worksheet, conversational Ask, input mapping, requirements and calculated outputs; original PDFs open in a side drawer.

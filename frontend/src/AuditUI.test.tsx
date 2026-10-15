@@ -25,6 +25,25 @@ function setup(answer=record()){
 // How an answer was checked sits behind one Details toggle; the answer itself comes first.
 const details=()=>userEvent.click(screen.getByRole('button',{name:'Details'}));
 
+test('citation-only answers keep tables and source links without claiming statement verification',async()=>{
+  const answer=record();
+  answer.grounding={version:'citations/1',status:'citations_checked',method:'Citation identity only; no statement verifier call.'};
+  answer.content.sections[0].body='| Element | Limit |\n| --- | --- |\n| New walls | 2 inches [E1] |';
+  answer.content.gaps=['Which condition applies? [E1]'];
+  const source=setup(answer);
+  expect(screen.getByRole('table')).toHaveTextContent('New walls');
+  await userEvent.click(screen.getByRole('button',{name:/Source 1.*Requirements.pdf/}));
+  expect(source).toHaveBeenLastCalledWith('source',7,expect.stringContaining('settlement'));
+  await details();
+  expect(screen.getByText('Citations checked')).toBeVisible();
+  expect(screen.queryByText('Model-checked')).not.toBeInTheDocument();
+  expect(screen.getByText('Model reports support')).toBeVisible();
+  await userEvent.click(screen.getByRole('button',{name:'Sources and checks'}));
+  expect(screen.queryByRole('region',{name:'Statement checks'})).not.toBeInTheDocument();
+  expect(screen.getByText(/no statement verifier call/)).toBeVisible();
+  expect(screen.queryByText(/no document statements to check/)).not.toBeInTheDocument();
+});
+
 test('the answer comes first; checking details stay hidden until asked for',async()=>{
   setup();
   expect(screen.getByText(/2 inches/,{selector:'.cx-section *'})).toBeVisible();

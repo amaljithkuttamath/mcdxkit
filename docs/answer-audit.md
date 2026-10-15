@@ -1,8 +1,21 @@
 # Ask answer checks and audit receipts
 
-This page describes how MCDXKit decides what part of a new Ask answer it publishes, and the read-only audit receipt you can download for any saved answer. These checks reduce unsupported statements. They do not guarantee that an answer is correct, complete, applicable or approved.
+Ordinary Ask checks citation identity and keeps the requested answer format. It does not run a second model over every statement. These checks do not establish engineering correctness.
 
-## Publication check (`grounding/8`)
+## Current chat checks (`citations/1`, `knowledge/10`)
+
+- Each citation must point to evidence retrieved in the current project and turn. Unknown citations, including in headings, assessments, open questions and conflicts, reject the answer.
+- Tables, conditions, open questions and conflicts are preserved. There is no statement-count cutoff. Existing answer-size and research-tool budgets still apply.
+- Literal number mismatches and sections missing inline citations are recorded in the audit. Number mismatches remain visible warnings; no sentence is silently deleted.
+- Details shows **Citations checked**. The model's own support assessment is labelled as such; it is not a verification result.
+- No-evidence answers identify missing information. Navigation-only guidance comes from recorded workflow state.
+- Saving requirements uses the separate original-page, exact-quote and literal-value checks in extraction. Requirements remain unreviewed until explicitly reviewed and bound to compatible inputs. Chat cannot approve or change calculation inputs.
+
+The receipt retains the `grounding` field for saved-record compatibility, with status `citations_checked` and no statement verdicts for new answers. Historical records remain unchanged. Sources, page links, retrieval history and model identity remain available for audit.
+
+## Historical statement check (`grounding/8`)
+
+The following describes older saved answers and the explicit legacy benchmark, **not the current Ask path**. It over-rejected valid reports (including tables exceeding 40 heuristic statements), so ordinary chat no longer uses it.
 
 After the agent drafts an answer, MCDXKit splits everything it would display (section headings, body sentences and bullets, conflict statements) into numbered statements. Short layout labels (≤ 6 words, no digits, no citation, no assertive verb or negation) are recognised by a fixed server rule and are not sent for checking.
 
@@ -62,7 +75,7 @@ Producing a receipt never changes the project or the saved answer and never call
 
 Details:
 
-- **Cited** means listed in a published section's `evidence_ids`, referenced inline in a section body by a known evidence ID, or matched by a checked statement. Other records were retrieved or read but not used. Several statements often cite the same page because one clause states a value and its conditions; the receipt shows searched, read and cited evidence separately rather than adding sources.
+- **Cited** means listed in a published section's `evidence_ids`, referenced inline in a section body by a known evidence ID, or matched by a checked statement. Citations in open questions, headings, assessments and conflicts also count. Other records were retrieved or read but not used. Several statements often cite the same page because one clause states a value and its conditions; the receipt shows searched, read and cited evidence separately rather than adding sources.
 - **Pages** are exported only as positive whole page numbers from the stored record. Other positions are omitted, and `page_available` is false when none remain.
 - **`status`** compares the current stored file with the project register: `match`, `changed`, `missing` or `not_in_project`.
 - **`answer_hash_status`** compares what the answer recorded with the register: `match`, `differs` (built from a different file revision; takes precedence), `partially_recorded` (all recorded hashes match but some evidence records have none), `unrecorded` or `not_in_project`.
