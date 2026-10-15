@@ -114,7 +114,14 @@ def create_app(*, origin, template=None, output_dir='mcdxkit-output', access_tok
                 # The ChatGPT OAuth redirect is a cross-site top-level GET; it is accepted only on its exact
                 # path and is verified by a one-time state, PKCE and an HttpOnly attempt cookie.
                 oauth_return = request.method == 'GET' and request.url.path == '/auth/callback'
-                if not oauth_return and (request.headers.get('origin') not in (None, origin) or request.headers.get('sec-fetch-site') == 'cross-site'):
+                # The callback's redirect retains cross-site Fetch Metadata. Only
+                # a top-level GET may load the public app shell; APIs, frames and
+                # fetches still require the same-origin/session checks below.
+                app_navigation = (request.method == 'GET' and request.url.path == '/'
+                                  and request.headers.get('sec-fetch-mode') == 'navigate'
+                                  and request.headers.get('sec-fetch-dest') == 'document')
+                if not oauth_return and (request.headers.get('origin') not in (None, origin)
+                                         or (request.headers.get('sec-fetch-site') == 'cross-site' and not app_navigation)):
                     raise RequestError('Cross-origin requests are disabled.', 403)
                 if request.url.path.startswith('/api/') and request.url.path != '/api/login':
                     if not authenticated(request):

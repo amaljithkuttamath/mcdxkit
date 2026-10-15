@@ -203,7 +203,7 @@ const STATUS={supported:'Model reports support',partial:'Partial evidence',insuf
 // Answers saved before the grounding gate carry no grounding record; they keep this label and render unchanged.
 const NOT_CHECKED='Earlier answer, not grounding-checked';
 // A recheck is an ordinary follow-up: the server gives the model the parent's unconfirmed statements as
-// private context, and the new answer passes the same statement check. Nothing unconfirmed is shown.
+// private context. The new answer uses the current citation-check policy.
 export const RECHECK='Recheck the statements from your previous answer that could not be confirmed.';
 const NO_SUPPORT='the check did not find it stated in the cited passages';
 // Unconfirmed statements are kept for a recheck from grounding/6; earlier answers have nothing to recheck from.
@@ -224,8 +224,9 @@ function Unconfirmed({grounding:g}:{grounding:Grounding}) {
 }
 const NOT_CHECKED_DETAIL='This answer was saved before statement checks existed. Citation IDs were matched to retrieved passages and stated numbers were compared literally with the cited text. Open the citations to confirm each statement.';
 // Grounding badges never say verified, true, approved or complete.
-const BADGE:Record<Grounding['status'],string>={grounded:'Model-checked',withheld:'Draft withheld',abstained:'Not found',workflow:'Workflow guidance'};
+const BADGE:Record<Grounding['status'],string>={citations_checked:'Citations checked',grounded:'Model-checked',withheld:'Draft withheld',abstained:'Not found',workflow:'Workflow guidance'};
 const BADGE_DETAIL:Record<Grounding['status'],string>={
+  citations_checked:'Citations match retrieved project passages. The answer is model-written; its meaning and completeness were not independently verified.',
   grounded:'The answering model checked each published statement against quoted source text; MCDXKit then matched the quotes, citations and numbers mechanically. This is not proof that a statement is true or applies to your project.',
   withheld:'The draft didn’t pass the statement check, so it was not published.',
   abstained:'No supporting evidence was found to answer from.',
@@ -253,7 +254,7 @@ function Answer({projectId,answer,turnRef,onSource,onWorkflow,onSaveOffer,onRech
   const g=answer.grounding,state=g?.status;
   const offer=answer.extraction_offer,unsupported=answer.audit?.unsupported_numbers||[],warn=unsupported.length>0;
   const research=answer.kind!=='workflow';
-  const status=answer.assessment&&research&&(!g||state==='grounded')?answer.assessment.status:null;
+  const status=answer.assessment&&research&&(!g||state==='grounded'||state==='citations_checked')?answer.assessment.status:null;
   const coverage=answer.coverage,partial=g?.coverage==='partial'||(!!coverage&&(coverage.ready<coverage.total||coverage.excluded.length>0));
   const gaps=answer.content.gaps;
   const unpublished=state==='withheld'||state==='abstained';
@@ -269,7 +270,7 @@ function Answer({projectId,answer,turnRef,onSource,onWorkflow,onSaveOffer,onRech
       {unpublished&&<p className="cx-plain">{state==='withheld'?'I couldn’t confirm an answer in your project documents.':'I didn’t find this in your project documents.'}{answer.evidence.length>0?' The most relevant pages are below.':''}</p>}
       {!unpublished&&!answer.content.sections.length&&answer.assessment&&<Prose index={index} onSource={onSource}>{answer.assessment.explanation}</Prose>}
       {answer.content.sections.map((section,i)=><section key={i} className="cx-section">{section.heading&&<h3>{section.heading}</h3>}<Prose index={index} sectionIds={section.evidence_ids} onSource={onSource}>{section.body}</Prose></section>)}
-      {!!answer.assessment?.conflicts.length&&<div className="cx-conflicts" role="note"><p className="cx-note-title">Sources disagree</p><ul>{answer.assessment.conflicts.map((c,i)=><li key={i}>{c}</li>)}</ul></div>}
+      {!!answer.assessment?.conflicts.length&&<div className="cx-conflicts" role="note"><p className="cx-note-title">Sources disagree</p><ul>{answer.assessment.conflicts.map((c,i)=><li key={i}><Prose index={index} onSource={onSource}>{c}</Prose></li>)}</ul></div>}
       {hidden>0&&(state==='grounded'||canRecheck)&&<p className="cx-hidden-note">{state==='grounded'?'Some points couldn’t be confirmed in your documents, so they aren’t shown.':'Its points couldn’t be confirmed in your documents.'}
         {canRecheck&&<> <Button className="cx-link" onPress={onRecheck}>Check again</Button></>}</p>}
       {offer&&!answer.extraction_ids?.length&&onSaveOffer&&<div className="cx-proposal">
@@ -289,13 +290,13 @@ function Answer({projectId,answer,turnRef,onSource,onWorkflow,onSaveOffer,onRech
         <div className="cx-byline">
           {g&&<span className={'cx-status g-'+g.status} title={BADGE_DETAIL[g.status]}>{BADGE[g.status]}</span>}
           {g?.coverage==='partial'&&<span className="cx-status partial">Partial search</span>}
-          {status&&<span className={'cx-status '+status} title={g?'Status set by MCDXKit from the checked answer and search coverage':'The model’s own assessment, not an independent check'}>{STATUS[status]}</span>}
+          {status&&<span className={'cx-status '+status} title={state==='grounded'?'Status set by MCDXKit from the checked answer and search coverage':'The model’s own assessment, adjusted for search coverage; not an independent check'}>{STATUS[status]}</span>}
           {!g&&research&&answer.evidence.length>0&&<span className="cx-status unchecked" title={NOT_CHECKED_DETAIL}>{NOT_CHECKED}</span>}<ModelUsed id={answer.model}/></div>
         {unpublished&&answer.assessment&&<p className="cx-unpublished-note">{answer.assessment.explanation}</p>}
         {(partial||precedence||gaps.length>0)&&<ul className="cx-notes" aria-label="Before relying on this answer">
           {partial&&<li><span>{coverage?`Searched ${coverage.ready} of ${coverage.total} documents${coverage.excluded.length?`; ${coverage.excluded.length} not searched`:''}.`:'Some documents were not searchable.'}</span></li>}
           {precedence&&<li><span>{precedence}</span></li>}
-          {gaps.map((gap,i)=><li key={i}><span>{gap}</span></li>)}
+          {gaps.map((gap,i)=><li key={i}><Prose index={index} onSource={onSource}>{gap}</Prose></li>)}
         </ul>}
         {g&&(state==='grounded'||g.reason_code==='statements_unconfirmed')&&<Unconfirmed grounding={g}/>}
         {!unpublished&&answer.evidence.length>0&&<EvidenceDisclosure answer={answer} index={index} onSource={onSource} flat={false}/>}
@@ -349,7 +350,7 @@ function Provenance({answer,index,onSource}:{answer:Draft;index:CitationIndex;on
         <dt>Answer</dt><dd><code>{answer.id}</code></dd>
         <dt>Model</dt><dd><code>{answer.model||'Not recorded'}</code></dd>
         {typeof answer.created==='number'&&<><dt>Saved</dt><dd>{new Date(answer.created*1000).toLocaleString()}</dd></>}
-        <dt>Statement check</dt><dd>{g?<code>{g.version}</code>:'None (earlier answer)'}</dd>
+        <dt>Answer checks</dt><dd>{g?<code>{g.version}</code>:'None (earlier answer)'}</dd>
       </dl>
       <p className="cx-legend">The downloaded audit record is a local receipt of this answer and its evidence, with a checksum. It is not a signature or an engineering approval. Source integrity is recorded by the server in the file.</p>
     </div>
@@ -358,6 +359,10 @@ function Provenance({answer,index,onSource}:{answer:Draft;index:CitationIndex;on
 
 // One entry per checked statement: verdict, the exact supporting quotes and their original pages.
 function Ledger({grounding:g,index,onSource}:{grounding:Grounding;index:CitationIndex;onSource:SourceHandler}) {
+  if(g.status==='citations_checked')return <section className="cx-ledger" aria-label="Citation checks">
+    <p className="cx-panel-title">Citation checks</p>
+    <p className="cx-legend">{g.method}</p><p className="cx-legend">{g.meaning}</p>
+  </section>;
   const statements=g.statements||[];
   const claims=statements.filter(s=>s.verdict!=='structural'),structural=statements.length-claims.length;
   const scope=[g.scope?.retrieval,g.scope?.precedence,g.scope?.approval].filter((s):s is string=>!!s);
@@ -412,6 +417,7 @@ function groupEvidence(evidence:Evidence[],cited:Set<string>):EvidenceGroup[] {
 function citedIds(answer:Draft) {
   const known=citationIndex(answer.evidence);
   const bodies=answer.content.sections.length?answer.content.sections.map(s=>s.body):answer.assessment?[answer.assessment.explanation]:[];
+  bodies.push(...answer.content.gaps,...(answer.assessment?.conflicts||[]));
   const ids=new Set<string>([...(answer.audit?.cited||[]),...answer.content.sections.flatMap(s=>s.evidence_ids),...bodies.flatMap(b=>inlineCitationIds(b,known))]);
   for(const s of answer.grounding?.statements||[]){s.evidence_ids?.forEach(id=>ids.add(id));s.quotes?.forEach(q=>ids.add(q.evidence_id));}
   return ids;

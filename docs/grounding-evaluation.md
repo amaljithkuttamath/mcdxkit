@@ -1,5 +1,7 @@
 # Ask grounding evaluation — 15 October 2026
 
+**Historical evaluation:** this benchmark evaluates the legacy statement gate. Ordinary Ask now uses `citations/1` without that gate; these scores do not measure current chat accuracy. See [current answer checks](answer-audit.md).
+
 The fixed 24-case benchmark passed with `cohere/north-mini-code:free`, `knowledge/9`, and `grounding/5` when each question was tested independently, matching separate Ask turns. All **10 supported statements were published**, all **14 unsupported statements were withheld**, and there were **zero provider errors**. This is a bounded claim-publication test, not a retrieval benchmark, proof of factual accuracy, or engineering approval.
 
 The [public fixtures](../tests/fixtures/grounding/cases-v1.json) cover values, units, signs, scope, minimum/maximum direction, negation, conditions, approval claims, unrelated evidence, and conflicting sources. Expected outcomes were fixed before the live runs; the fixture SHA-256 is `dfec79594debb3c59bbeed94fee116425c92c0cf0734788d96cebbb91f9506e2`. The acceptance rule requires every positive and negative case to pass. Provider errors and malformed/missing checks fail; refusing everything cannot pass.

@@ -13,7 +13,8 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 # knowledge/8: claim-level inline citations ([E1][E2] canonical), page-aware numeric audit,
 #              provider-neutral extraction wording.
 # knowledge/9: grounding gate (grounding/1) before publishing new answers.
-VERSION = 'knowledge/9'
+# knowledge/10: ordinary chat checks citations, without a second model/statement gate.
+VERSION = 'knowledge/10'
 MODEL_CALLS = 6             # agent model calls per turn; the last one has no research tools
 SEARCH_CALLS = 3            # search_documents tool calls per turn
 SEARCH_QUERY_BUDGET = 6     # distinct retrieval queries per turn (repeats are free)
@@ -109,10 +110,11 @@ def _numbers(value):
     return {_signed(sign, number) for sign, number in _NUMBER.findall(value)}
 
 
-def audit_citations(sections, evidence):
+def audit_citations(sections, evidence, extra_text=()):
     """Deterministic post-checks: citation identity and literal numbers, not semantic truth."""
     rows = {row['id']: row for row in evidence}
-    unknown = sorted({ref for s in sections for ref in citation_ids(s['body']) if ref not in rows})
+    extra_refs = {ref for value in extra_text for ref in citation_ids(value)}
+    unknown = sorted(({ref for s in sections for ref in citation_ids(s['body'])} | extra_refs) - rows.keys())
     if unknown: raise ValueError('Answer contains an inline citation without current retrieved evidence.')
     if any(ref not in s['evidence_ids'] for s in sections for ref in citation_ids(s['body'])):
         raise ValueError('Answer cites inline evidence that its section does not list.')
@@ -129,7 +131,7 @@ def audit_citations(sections, evidence):
         missing = sorted(_numbers(body) - found)[:10]
         if missing: unsupported.append({'heading': section['heading'], 'values': missing})
         if section['evidence_ids'] and not citation_ids(section['body']): uncited.append(section['heading'])
-    cited = sorted({ref for s in sections for ref in s['evidence_ids']})
+    cited = sorted({ref for s in sections for ref in s['evidence_ids']} | extra_refs)
     return {'status': 'warnings' if unsupported else 'passed', 'cited': cited, 'unsupported_numbers': unsupported,
             'sections_without_inline_citations': uncited,
             'meaning': 'Citation IDs exist in this turn and stated numbers were matched literally against cited text. '
@@ -656,8 +658,40 @@ def _workflow_explanation(workflow, actions):
     return ' '.join(x for x in (state, steps, 'This is guidance from recorded project state, not document evidence.') if x)
 
 
+def citation_review(payload, sections, evidence, coverage, workflow=None):
+    """Publish a cited chat answer as AI narrative, never as reviewed engineering input.
+
+    Keep Markdown intact. Citation ownership is a hard boundary; meaning and completeness
+    are not claimed as verified. Requirement extraction/review use their separate contracts.
+    """
+    known = {row['id'] for row in evidence}
+    prose = [payload['assessment'], *payload['gaps'], *payload['conflicts']]
+    prose += [value for section in sections for value in (section['heading'], section['body'])]
+    refs = {ref for value in prose for ref in citation_ids(value)}
+    refs.update(ref for section in sections for ref in section['evidence_ids'])
+    if refs - known:
+        raise ValueError('Answer contains a citation without current retrieved evidence.')
+    record = {'version': 'citations/1', 'scope': _scope(coverage),
+              'coverage': 'partial' if coverage['excluded'] else 'searchable_documents',
+              'method': 'Current-turn citation identity checks and advisory literal number matching. No statement verifier call.',
+              'meaning': 'Citations link to retrieved project passages. The answer is model-written; meaning, completeness '
+                         'and engineering applicability have not been independently verified.'}
+    if payload['kind'] == 'workflow' and not refs and not evidence:
+        return ({**record, 'status': 'workflow'}, [],
+                {'status': 'partial', 'explanation': _workflow_explanation(workflow, payload['actions']), 'conflicts': []}, [])
+    if any(not section['evidence_ids'] for section in sections):
+        raise ValueError('Document answer sections require current evidence citations.')
+    status = payload['status'] if sections else 'insufficient'
+    if coverage['excluded'] and status == 'supported':
+        status = 'partial'
+    return ({**record, 'status': 'citations_checked' if sections else 'abstained'}, sections,
+            {'status': status, 'explanation': canonical_citations(payload['assessment']),
+             'conflicts': [canonical_citations(value) for value in payload['conflicts']]},
+            [canonical_citations(value) for value in payload['gaps']])
+
+
 def grounding_gate(verify, payload, sections, evidence, coverage, workflow=None):
-    """Decide what a NEW answer may publish. Returns (grounding, sections, assessment, gaps).
+    """Legacy statement-check evaluation contract; ordinary Ask uses citation_review.
 
     verify(statements, evidence) -> raw GroundingReport dict. There is no bypass: without a verifier the
     draft is withheld. Model free text that cannot be checked (assessment, gaps) is never published;
@@ -858,7 +892,7 @@ class KnowledgeAgent:
                                       'reasoning': reasoning})
 
     def verify(self, statements, evidence):
-        """One structured grounding call on the same provider/model. Returns the raw report;
+        """Explicit benchmark verifier, not called by ordinary Ask. Returns the raw report;
         the caller validates it mechanically against server-owned evidence. No retry."""
         import httpx
         from langchain_core.output_parsers import PydanticOutputParser

@@ -166,6 +166,7 @@ class ChatGPTResponses(BaseChatModel):
             raise ChatGPTError('Internal error: ChatGPT plan requests must stream and must not be stored.')
         token = ChatGPTAccounts(self.workspace).access_token(self.account)     # plan scope checked here
         started, received, produced = time.monotonic(), 0, 0
+        completed_items: dict[int, dict] = {}
         http = httpx.Client(timeout=httpx.Timeout(60, connect=15), follow_redirects=False, trust_env=False)
         client = OpenAI(api_key=token, base_url=RESOURCE, max_retries=0, http_client=http)
         try:
@@ -182,10 +183,20 @@ class ChatGPTResponses(BaseChatModel):
                         produced += len(data.get('delta') or '')
                         if produced > self.max_output_chars:
                             raise ChatGPTError("ChatGPT's response exceeded MCDXKit's output budget." + _SUFFIX)
+                    elif kind == 'response.output_item.done':
+                        index, item = data.get('output_index'), data.get('item')
+                        if type(index) is not int or index < 0 or index in completed_items or not isinstance(item, dict):
+                            raise ChatGPTError('ChatGPT returned an invalid completed stream item.' + _SUFFIX)
+                        completed_items[index] = item
                     elif kind == 'response.completed':
                         response = data.get('response') if isinstance(data.get('response'), dict) else {}
                         if response.get('status') != 'completed':
                             raise ChatGPTError('ChatGPT ended without a completed response.' + _SUFFIX)
+                        # Plan inference can leave the terminal output array empty.
+                        # Retain done items in stream order, but release them only
+                        # after successful completion; provisional deltas never qualify.
+                        if not response.get('output') and completed_items:
+                            response = {**response, 'output': [completed_items[i] for i in sorted(completed_items)]}
                         if len(output_text(response)) > self.max_output_chars:
                             raise ChatGPTError("ChatGPT's response exceeded MCDXKit's output budget." + _SUFFIX)
                         return response
