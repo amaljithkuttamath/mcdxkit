@@ -13,6 +13,9 @@ build/
 dist/
 *.egg-info/
 .env
+.env.*
+!.env.example
+!*.env.example
 .secrets/
 mcdxkit-output/
 
@@ -30,3 +33,14 @@ mcdxkit-output/
 *.tfvars
 *.tfvars.json
 crash.log
+
+# Document projects and browser-entered service credentials are private.
+.documents/
+.credentials.json
+.credentials-*
+# Sign in with ChatGPT host ID, registrations and tokens (owner-only).
+.chatgpt/
+
+frontend/node_modules/
+!frontend/index.html
+!src/mcdxkit/web/workspace-dist/index.html

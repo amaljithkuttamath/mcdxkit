@@ -1,0 +1,146 @@
+[
+  {
+    "id": "supported_with_conditions",
+    "source": "For new retaining walls, total settlement shall not exceed 2 inches over 50 years. Calculate both short-term and long-term settlement.",
+    "claim": "For new retaining walls, total settlement must not exceed 2 inches over 50 years, considering short-term and long-term settlement.",
+    "expected": "supported"
+  },
+  {
+    "id": "invented_number",
+    "source": "For new retaining walls, total settlement shall not exceed 2 inches over 50 years.",
+    "claim": "New retaining walls may settle 7 inches over 50 years.",
+    "expected": "unsupported"
+  },
+  {
+    "id": "wrong_unit_same_number",
+    "source": "For new retaining walls, total settlement shall not exceed 2 inches over 50 years.",
+    "claim": "New retaining walls may settle 2 feet over 50 years.",
+    "expected": "unsupported"
+  },
+  {
+    "id": "reversed_bound",
+    "source": "For new retaining walls, total settlement shall not exceed 2 inches over 50 years.",
+    "claim": "New retaining walls must settle at least 2 inches over 50 years.",
+    "expected": "unsupported"
+  },
+  {
+    "id": "wrong_scope",
+    "source": "For new retaining walls, total settlement shall not exceed 2 inches over 50 years. Existing walls require a separate assessment.",
+    "claim": "The settlement limit for existing walls is 2 inches over 50 years.",
+    "expected": "unsupported"
+  },
+  {
+    "id": "lost_time_condition",
+    "source": "For new retaining walls, total settlement shall not exceed 2 inches over 50 years.",
+    "claim": "All retaining walls have a universal settlement limit of 2 inches.",
+    "expected": "unsupported"
+  },
+  {
+    "id": "negation",
+    "source": "Direct attachment of the concrete barrier to the retaining wall stem is not allowed.",
+    "claim": "The concrete barrier may be directly attached to the retaining wall stem.",
+    "expected": "unsupported"
+  },
+  {
+    "id": "no_relevant_evidence",
+    "source": "The submission must include a drainage plan.",
+    "claim": "The approved foundation bearing pressure is 2 ksf.",
+    "expected": "unsupported"
+  },
+  {
+    "id": "invented_approval",
+    "source": "The design must be submitted to the engineer for review.",
+    "claim": "The engineer has reviewed and approved this design.",
+    "expected": "unsupported"
+  },
+  {
+    "id": "conflict_not_resolved",
+    "source": "Source A: Settlement shall not exceed 2 inches. Source B: Settlement shall not exceed 1 inch. Neither excerpt establishes revision precedence.",
+    "claim": "The governing settlement limit is definitely 2 inches.",
+    "expected": "unsupported"
+  },
+  {
+    "id": "supported_existing_scope",
+    "source": "For existing retaining walls, assess settlement separately. For new retaining walls, total settlement shall not exceed 2 inches over 50 years.",
+    "claim": "Existing retaining walls require a separate settlement assessment.",
+    "expected": "supported"
+  },
+  {
+    "id": "supported_minimum",
+    "source": "Pile embedment shall be at least 1.5 m below the bearing stratum.",
+    "claim": "Pile embedment must be at least 1.5 m below the bearing stratum.",
+    "expected": "supported"
+  },
+  {
+    "id": "supported_negation",
+    "source": "Direct attachment of the concrete barrier to the retaining wall stem is not allowed.",
+    "claim": "Direct attachment of the concrete barrier to the retaining wall stem is prohibited.",
+    "expected": "supported"
+  },
+  {
+    "id": "supported_paired_units",
+    "source": "The offset is 2 feet. Settlement shall not exceed 3 inches.",
+    "claim": "The offset is 2 feet; settlement shall not exceed 3 inches.",
+    "expected": "supported"
+  },
+  {
+    "id": "supported_conditional",
+    "source": "If groundwater is above the footing base, provide a dewatering plan before excavation.",
+    "claim": "When groundwater is above the footing base, a dewatering plan is required before excavation.",
+    "expected": "supported"
+  },
+  {
+    "id": "supported_total_differential",
+    "source": "The total settlement limit is 25 mm. The differential settlement limit is 10 mm.",
+    "claim": "Total settlement is limited to 25 mm; differential settlement is limited to 10 mm.",
+    "expected": "supported"
+  },
+  {
+    "id": "supported_temporary_permanent",
+    "source": "Temporary supports must remain until the permanent works reach the specified strength.",
+    "claim": "Temporary supports must remain until the permanent works reach the specified strength.",
+    "expected": "supported"
+  },
+  {
+    "id": "supported_source_conflict",
+    "source": "Source A limits settlement to 2 inches. Source B limits settlement to 1 inch. No precedence is established.",
+    "claim": "The sources conflict: Source A limits settlement to 2 inches and Source B to 1 inch; their precedence is not established.",
+    "expected": "supported"
+  },
+  {
+    "id": "supported_no_approval",
+    "source": "The design has been submitted for review. No approval has been issued.",
+    "claim": "The design is submitted for review but has not been approved.",
+    "expected": "supported"
+  },
+  {
+    "id": "swapped_quantity_units",
+    "source": "The offset is 2 feet. Settlement shall not exceed 3 inches.",
+    "claim": "Settlement shall not exceed 2 inches.",
+    "expected": "unsupported"
+  },
+  {
+    "id": "differential_total_swap",
+    "source": "The total settlement limit is 25 mm. The differential settlement limit is 10 mm.",
+    "claim": "Differential settlement is limited to 25 mm.",
+    "expected": "unsupported"
+  },
+  {
+    "id": "temporary_permanent_swap",
+    "source": "A 10 kN load is permitted on temporary supports. Permanent supports need separate design.",
+    "claim": "Permanent supports permit a 10 kN load.",
+    "expected": "unsupported"
+  },
+  {
+    "id": "condition_removed",
+    "source": "If groundwater is above the footing base, provide a dewatering plan before excavation.",
+    "claim": "A dewatering plan is always mandatory before every excavation.",
+    "expected": "unsupported"
+  },
+  {
+    "id": "unit_conversion_not_authorized",
+    "source": "The service settlement limit is 2 inches.",
+    "claim": "The service settlement limit is 50 mm.",
+    "expected": "unsupported"
+  }
+]

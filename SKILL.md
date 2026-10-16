@@ -73,3 +73,7 @@ The `.cpd` contains executable translated formulas; `.html` is the calculated sn
 ## Source and standards records
 
 After conversion, `mcdxkit standards init output.audit.json --output engineering-register.json` creates a pending provenance register. Use `mcdxkit standards inspect engineering-register.json --audit output.audit.json` to inspect it. The browser provides **Sources & standards** on generated outputs. See [the register guide](docs/engineering-standards.md) for schema, scope and external review records. Never fabricate citations or attestations; software checks are not engineering approval.
+
+## Source-backed design reports
+
+For project-document drafting, use `mcdxkit documents` following [document workflow](docs/document-workflow.md). Run `config` first. Save original PDFs, index with RAGFlow, then draft with an explicitly configured OpenRouter free model. Inspect cited original pages and qualifications before recording review. Accept only explicitly reviewed template scalar changes; never override raw loads with AI suggestions. Use `build` to call the shared engine and export the evidence package. Do not call protocol fixtures live-model validation, and do not infer engineering approval from successful execution. See [local setup](deploy/ragflow.md).

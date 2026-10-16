@@ -58,6 +58,7 @@ flowchart LR
 | `server.py` | FastAPI/Uvicorn, authentication, origin checks, limits and static assets |
 | `web/` | Browser workflow and file viewer; no independent design solver |
 | `batch.py` | Input discovery, bounded process pool, job identity, manifest and resume |
+| `template_library.py` | Workspace template library: hash-addressed `.mcdx` storage, versions by name, archive (never delete), verified paths |
 | `review/` | Advisory review checks as plug-ins, shared by inspect, convert, batch and browser: `api.py` (plug-in contract, standard library only), `view.py` (frozen `ReportView` from the parsed dict), `registry.py` (built-ins and `mcdxkit.review` entry points), `runner.py` (isolated, time-budgeted runs; `review-checks/1` report), `history.py` (past audits for the classifier), `checks/`, `annotate/`, `classify/` |
 | `summary.py` | `mcdxkit summary` input discovery and exclusive CSV write; rows come from `engine.py` |
 
@@ -112,3 +113,15 @@ The HTTP layer checks Host/Origin, request tokens and hosted login state. Networ
 Actions tests Python versions and package contents before container checks. Only a successful `main` run pushes the exact tested image to GHCR. Pull-request code is tested without registry login or publication. The repository's public source, registry package visibility and a live hosted deployment are separate states.
 
 See [distributed execution boundaries](distributed-architecture.md) for the future API/job/worker/storage contract and its acceptance gates.
+
+## Source-backed document authoring
+
+The [document workflow](document-workflow.md) adds persistent design-basis drafting and review around the existing engine. RAGFlow owns parsing/retrieval; the explicit OpenRouter free model drafts cited prose and input suggestions. SQLite and immutable source snapshots record project/review state; CLI and browser use `documents.py`. Numerical results remain engine-owned. See [deployment](../deploy/ragflow.md).
+
+## Unified project workspace and conversation
+
+The offline-bundled React/TypeScript UI in `frontend/` uses React Aria for controls and TanStack Query for server state. It renders the existing worksheet inspection and PDF.js outputs. Source originals live in a drawer; worksheet, questions, requirements, input decisions and results remain in one project. `web/workspace-dist` is generated and shipped in the wheel/container.
+
+`knowledge.py` owns the bounded LangChain conversation agent; `extraction.py` owns selected-page text/schema/provenance validation. `documents.py` owns project records, review decisions and packages. Read-only tools return current workflow state and project-scoped RAGFlow passages. Human choices are saved as conversation follow-ups; review/input decisions use domain APIs. The model never controls the host or invents calculation results.
+
+`jobs.py` owns a durable SQLite ledger, JSON-only Huey dispatch, separate chat/batch workers, activity events, cancellation and publication fencing. The server supervises workers; SSE communicates observed steps, with polling as recovery. The calculation engine remains independent of the AI clients. Expensive work is outside write transactions and snapshots are rechecked before publication. This supports a single trusted workspace on local storage; multiple application replicas, network filesystems, tenant isolation and PostgreSQL are not implemented.

@@ -190,3 +190,28 @@ For a host reachable over the network, follow [deployment instructions](../deplo
 ## Source and standards records
 
 After conversion, `mcdxkit standards init output.audit.json --output engineering-register.json` creates a pending provenance register. Use `mcdxkit standards inspect engineering-register.json --audit output.audit.json` to inspect it. The browser provides **Sources & standards** on generated outputs. See [the register guide](engineering-standards.md) for schema, scope and external review records. Never fabricate citations or attestations; software checks are not engineering approval.
+
+## Document creation
+
+`mcdxkit documents --help` exposes project creation, the workspace template library (`templates add|list|archive|restore`), calculations per project (`connect`, `calculations`, `build PROJECT --all`), upload/index, conversational ask, selected-page extraction, requirement/draft review, build and durable submit/jobs/job/cancel. Use the same `--workspace` directory across commands; the browser uses its output directory plus `.documents`. See [the complete workflow](document-workflow.md) for service setup, review semantics and examples.
+
+To calculate every calculation in a project, one run each:
+
+```bash
+mcdxkit documents --workspace ./mcdxkit-output/.documents build PROJECT_ID --all
+```
+
+Progress (`Finished N of M calculations`) goes to stderr and the JSON result to stdout. A calculation that already has a verified run for the same inputs and engine is skipped, so running the command again after an interruption finishes the rest without duplicate runs. One calculation's failure stays on its own row and nothing is retried; the command exits 1 if any calculation failed. See [Calculate all](document-workflow.md#calculate-all).
+
+
+To carry reviewed extracted values into the calculation workflow, use the same review bridge as the browser:
+
+```bash
+mcdxkit documents --workspace ./mcdxkit-output/.documents requirement-draft PROJECT_ID \
+  --requirements REQUIREMENT_ID --bindings '[]' \
+  --reviewer 'Engineer name' --note 'Source and conditions checked' \
+  --applicability 'Explain why this provision applies to this structure'
+mcdxkit documents --workspace ./mcdxkit-output/.documents build PROJECT_ID DRAFT_ID
+```
+
+Each selected requirement must already have a `review-requirement --status reviewed` decision. Empty bindings retain template inputs. Explicit bindings are a JSON list of objects with `requirement`, `variable`, `value` and `unit`; source and template units must match. The returned draft ID is used by `build`. This records the supplied review decision, not engineering certification.
