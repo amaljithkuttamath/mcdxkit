@@ -125,7 +125,13 @@ def review_note(block):
             'Checks review the GROUP summary for consistency. They do not verify the design.')
 
 
-def inspect_report(report, *, cases=None, load_source='effects', checks='default', history=None):
+def inspect_template(template, *, input_map=None):
+    """Discover actual scalar input definitions, including templates with custom variable names."""
+    from .inspection import template_inputs
+    return template_inputs(template,input_map=input_map)
+
+
+def inspect_report(report, *, cases=None, load_source='effects', checks='default', history=None, template=None, input_map=None, overrides=None):
     """Inspect available cases; selection_required explains unresolved classification.
 
     ``checks`` selects review plug-ins ('default', 'none', a comma list of ids, or a plan from
@@ -139,17 +145,24 @@ def inspect_report(report, *, cases=None, load_source='effects', checks='default
         if cases is not None:raise
         selected=[];issue=str(exc)
     block=review_runner.review(parsed,[c['id'] for c in selected],plan=plan,history=history)
-    return {'source':Path(report).name,'cases':[{'id':c['id'],'name':c['name']} for c in parsed['cases']],
+    result={'source':Path(report).name,'summary_only':parsed['summary_only'],
+            'cases':[{'id':c['id'],'name':c['name']} for c in parsed['cases']],
             'selected_cases':[c['id'] for c in selected],'selection_required':issue,
             'load_source':load_source,'envelope':group_report.envelope(selected) if selected else None,
             'governing':_governing(block) if selected else None,
             'case_suggestions':_case_suggestions(parsed,block),
             'review_checks':block,
             'largest_observed_pile_id':max((p for c in parsed['cases'] for p in c['pile_ids']),default=0)}
+    if template is not None:
+        from .inspection import template_report
+        result.update(template_report(template,result,input_map,overrides))
+    elif input_map is not None:
+        raise ValueError('Inspecting an input map requires --template')
+    return result
 
 
 def convert(report, template, output, *, cases=None, load_source='effects', title=None, overrides=None,
-            checks='default', review_decisions=None):
+            checks='default', review_decisions=None, input_map=None):
     """Generate .mcdx, executable .cpd, calculated .html and .audit.json. Never overwrite sources or existing outputs.
 
     The advisory review (``checks``) and any ``review_decisions`` are recorded in the audit. Only when
@@ -174,7 +187,7 @@ def convert(report, template, output, *, cases=None, load_source='effects', titl
     with tempfile.TemporaryDirectory(prefix='.mcdxkit-',dir=output.parent) as folder:
         staged=Path(folder)/'worksheet.mcdx'
         result=mcdx.generate(template,staged,selected,report.name,title,overrides,geometry_cases=parsed['cases'],
-                             review_note=review_note(block))
+                             review_note=review_note(block),input_map=input_map)
         result.update({'output':str(output),'audit':str(audit),'source_sha256':hashlib.sha256(raw).hexdigest(),
                        'geometry_case_ids':[c['id'] for c in parsed['cases']],
                        'case_names':{str(c['id']):c['name'] for c in parsed['cases']},

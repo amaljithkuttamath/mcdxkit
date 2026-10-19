@@ -62,7 +62,8 @@ def from_audit(audit):
                                                           for c in audit.get('source_cases', [])]},
                        'transformations': ['Maximum compression' if component == 'P' else 'Maximum absolute component',
                                            'Independent component envelope; not concurrent loads'],
-                       'template_mapping': symbol if component != 'Vz' else None})
+                       'template_mapping': ', '.join(k for k,v in audit['input_map'].items() if v==component) or None
+                       if 'input_map' in audit else symbol if component != 'Vz' else None})
     return {'schema': SCHEMA, 'revision': 1, 'calculation_sha256': audit_hash(audit),
             'project_basis': {k: audit.get('load_source') if k == 'load_source' else None for k in BASIS_FIELDS},
             'sources': [{'id': 'report', 'kind': 'analysis_report', 'version': '1',

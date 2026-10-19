@@ -24,7 +24,11 @@ The server prints its URL. Upload/select a private compatible template in the br
 
 ## Engineering and data invariants
 
+- Start by validating the selected Mathcad template against the raw report. Use shared preflight checks for mapping, dimensions, layout and observed pile capacity before preview or generation; show unresolved mappings/case selection explicitly. Revalidate after template, mapping, case, load-basis or override changes. Input compatibility does not prove equation execution or engineering approval.
+
 - Read load values from the final local-load summary only. No fallback to earlier/global tables. Preserve the intended case selection and load basis.
+- Support reports beginning directly at the summary heading. Bound each case by its next `LOAD CASE:` marker; never borrow rows across cases. Missing header case names require explicit selection, not inferred STR/SER labels. Keep full-report and summary-only equivalence tests for both load bases.
+- Discover template inputs from top-level scalar definitions. Keep explicit input maps shared across CLI, SDK, batch and browser; never guess custom engineering mappings from labels or units. Test custom names, Vz, dimensional mismatches, changing case counts, and batch resume identity. Unmapped values stay in the template; missing layout counts mean unverified capacity.
 - Never invent geometry, materials, fixity or pile counts to make a calculation pass. Overrides change engineering inputs.
 - Preserve sources and existing outputs. Use new output paths. Keep engineering documents, snapshots, `.env` and secrets out of Git, logs and public fixtures.
 - Keep native formulas executable and remove stale Mathcad result caches. Never insert a cached pass message as a fresh result.
@@ -83,3 +87,23 @@ After **every push**, inspect the workflows for that exact commit SHA, including
 The [repository audit](docs/improvement-loop.md) runs after releases and weekly. Work evidence-backed findings through issue branches and PRs. Check for an existing matching issue first, record the affected commit and reproduction, distinguish infrastructure failures from product defects, and add a regression test for changed behavior. Passing software checks never grant engineering approval. Do not mark an issue done until acceptance evidence and exact-head CI, including post-merge publishing, pass.
 
 Installed-package checks use `python scripts/test_installed.py` after installing the built wheel. Do not prepend the repository `src` directory during test discovery; that masks broken wheel/container installs. Keep test helpers and synthetic fixtures in the source archive, and validate both distributions with `scripts/check_package.py`.
+
+## Document-authoring changes
+
+Keep model integrations in `document_clients.py` and durable authoring/review/package logic in `documents.py`. Use the same workflow from CLI and HTTP. Test unknown/foreign citations, paid models, incompatible units, stale reviews, source tampering, rate limits and original-file authorization. AI narrative must remain labelled; computed tables must come from engine artifacts. No model-supplied paths, tools or executable formulas. Keep live service validation separate from controlled protocol fixtures.
+
+Sign in with ChatGPT (`chatgpt.py`, `chatgpt_responses.py`, [guide](docs/chatgpt.md)) is local-loopback only. Keep tokens and the authorize URL server-side, follow the documented OAuth/Responses preview contract, never read other apps' credentials, never fall back to another provider and never retry inference automatically. Test state/nonce/PKCE, denial, replay, wrong account/client, token-file permissions and no-token API responses.
+
+Browser service settings are shared workspace overrides, stored only in `.documents/.credentials.json`. Never return secret values, put them in browser storage, include them in exports or bypass session/CSRF checks. Test blank-key preservation, endpoint changes requiring a fresh key, free-only model validation (the only paid exception is the pinned model in `PINNED_PAID_MODELS`, routed to one provider with no fallback) and permissions.
+
+A document library must support create/add/index/ask without a raw report or template. Keep cited answers separate from calculation drafts. Connecting immutable calculation snapshots preserves library/index identities and answers. Test the no-input path, failed/repeated connections, historical answers, and linked drafts using selected load context; library answers cannot propose template inputs.
+
+## Workspace and interactive Ask
+
+Keep the primary workflow focused on the two calculation files: raw report and Mathcad template, input checks, then calculated outputs. Reference PDFs are optional for conversion. Ask is an independent destination accessible from every workspace view, including before a project or calculation exists; never make it a gated final wizard step. Preserve pending upload selections while navigating to Ask. Do not mark a failed run as calculated.
+
+The primary UI is `frontend/` (React/TypeScript, React Aria, TanStack Query); build/test with `npm ci --prefix frontend --ignore-scripts`, `npm test --prefix frontend`, and `npm run build --prefix frontend`. Commit generated workspace assets and keep package/container guards in sync. The classic batch adapter remains at `/convert`.
+
+Keep the conversation agent project-scoped. Its only write tool extracts unreviewed requirements from the selected project; it cannot approve or bind them. Stream observed activity, not private chain of thought or unvalidated claims. Persist human clarification and resume with its question/answer context. Workflow action buttons reuse explicit upload/index/extract/review/map/calculate controls; never let model text approve requirements or alter loads. Chat uses a separate worker lane from batch tasks. Do not retry uncertain model requests automatically, hold SQLite write transactions across network calls, or publish results from cancelled/stale claims. See [document workflow](docs/document-workflow.md).
+
+Ordinary Ask uses citation identity checks (`citations/1`) and advisory number warnings, without a second model verification call or sentence-count cutoff. Preserve requested Markdown, open questions and conflicts; describe the answer as model-written, never independently verified. Keep extraction's exact quote/page/value checks and explicit requirement review/input-binding gates separate. Test long tables, unknown citations, no-evidence answers and honest audit labels. Historical grounding records remain readable; the legacy grounding benchmark is not evidence of current chat accuracy.

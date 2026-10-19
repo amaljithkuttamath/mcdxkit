@@ -119,6 +119,9 @@ def template(path):
         if unit:E.SubElement(expr,'{'+M+'}mult')
         E.SubElement(expr,'{'+M+'}real').text=str(value)
         if unit:E.SubElement(expr,'{'+M+'}id',labels='UNIT').text=unit
+        if name in ('M_uy','M_uz'):
+            d.remove(expr)
+            d.append(mcdx.quantity(expr,'in'))
     r=E.SubElement(regions,'{'+W+'}region',{'region-id':'50','top':'400','left':'10','actualWidth':'180','actualHeight':'24'})
     math=E.SubElement(r,'{'+W+'}math',{'resultRef':'50'})
     d=E.SubElement(math,'{'+M+'}define');E.SubElement(d,'{'+M+'}id',labels='VARIABLE').text='P_u'

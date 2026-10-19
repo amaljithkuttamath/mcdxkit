@@ -1,0 +1,5590 @@
+{
+  "schema": "mcdxkit.grounding-evaluation-history/1",
+  "scope": "Public synthetic fixtures only; no engineering documents or credentials. Failed runs are retained.",
+  "runs": [
+    {
+      "schema": "mcdxkit.grounding-benchmark/1",
+      "created": "2026-10-15T15:33:18.664260+00:00",
+      "model": "cohere/north-mini-code:free",
+      "agent_version": "knowledge/9",
+      "grounding_version": "grounding/2",
+      "fixture_sha256": "dfec79594debb3c59bbeed94fee116425c92c0cf0734788d96cebbb91f9506e2",
+      "acceptance": "All supported cases published; zero unsupported cases published. Errors and missing results fail.",
+      "limits": "Synthetic fixture benchmark, not a guarantee of factual accuracy or engineering approval.",
+      "passed": false,
+      "total": 24,
+      "supported_published": 5,
+      "supported_total": 10,
+      "unsafe_publications": 1,
+      "protocol": "pooled question stress test",
+      "cases": [
+        {
+          "case": "supported_with_conditions",
+          "expected_publication": true,
+          "published": true,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E1",
+                  "text": "For new retaining walls, total settlement shall not exceed 2 inches over 50 years. Calculate both short-term and long-term settlement."
+                }
+              ]
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "reasons": [],
+              "checks_applied": [
+                "evidence_ids",
+                "verbatim_quotes",
+                "inline_citations",
+                "numbers",
+                "number_unit_pairs",
+                "limit_direction",
+                "source_sentence_scope"
+              ]
+            }
+          ]
+        },
+        {
+          "case": "invented_number",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "evidence_ids": [
+                "E2"
+              ],
+              "quotes": []
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "reasons": [],
+              "checks_applied": []
+            }
+          ]
+        },
+        {
+          "case": "wrong_unit_same_number",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "evidence_ids": [
+                "E3"
+              ],
+              "quotes": []
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "reasons": [],
+              "checks_applied": []
+            }
+          ]
+        },
+        {
+          "case": "reversed_bound",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "evidence_ids": [
+                "E4"
+              ],
+              "quotes": []
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "reasons": [],
+              "checks_applied": []
+            }
+          ]
+        },
+        {
+          "case": "wrong_scope",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "evidence_ids": [
+                "E5"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E5",
+                  "text": "For new retaining walls, total settlement shall not exceed 2 inches over 50 years. Existing walls require a separate assessment."
+                }
+              ]
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "reasons": [
+                "its asset age qualifier (existing) differs from the source sentence that states it (new)"
+              ],
+              "checks_applied": [
+                "evidence_ids",
+                "verbatim_quotes",
+                "inline_citations",
+                "numbers",
+                "number_unit_pairs",
+                "source_sentence_scope"
+              ]
+            }
+          ]
+        },
+        {
+          "case": "lost_time_condition",
+          "expected_publication": false,
+          "published": true,
+          "passed": false,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "evidence_ids": [
+                "E6"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E6",
+                  "text": "For new retaining walls, total settlement shall not exceed 2 inches over 50 years."
+                }
+              ]
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "reasons": [],
+              "checks_applied": [
+                "evidence_ids",
+                "verbatim_quotes",
+                "inline_citations",
+                "numbers",
+                "number_unit_pairs",
+                "source_sentence_scope"
+              ]
+            }
+          ]
+        },
+        {
+          "case": "negation",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "evidence_ids": [
+                "E7"
+              ],
+              "quotes": []
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "reasons": [],
+              "checks_applied": []
+            }
+          ]
+        },
+        {
+          "case": "no_relevant_evidence",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "evidence_ids": [
+                "E8"
+              ],
+              "quotes": []
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "reasons": [],
+              "checks_applied": []
+            }
+          ]
+        },
+        {
+          "case": "invented_approval",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "evidence_ids": [
+                "E9"
+              ],
+              "quotes": []
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "reasons": [],
+              "checks_applied": []
+            }
+          ]
+        },
+        {
+          "case": "conflict_not_resolved",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "uncertain",
+              "evidence_ids": [
+                "E10"
+              ],
+              "quotes": []
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "uncertain",
+              "reasons": [],
+              "checks_applied": []
+            }
+          ]
+        },
+        {
+          "case": "supported_existing_scope",
+          "expected_publication": true,
+          "published": true,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "evidence_ids": [
+                "E11"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E11",
+                  "text": "For existing retaining walls, assess settlement separately. For new retaining walls, total settlement shall not exceed 2 inches over 50 years."
+                }
+              ]
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "reasons": [],
+              "checks_applied": [
+                "evidence_ids",
+                "verbatim_quotes",
+                "inline_citations",
+                "source_sentence_scope"
+              ]
+            }
+          ]
+        },
+        {
+          "case": "supported_minimum",
+          "expected_publication": true,
+          "published": true,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "evidence_ids": [
+                "E12"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E12",
+                  "text": "Pile embedment shall be at least 1.5 m below the bearing stratum."
+                }
+              ]
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "reasons": [],
+              "checks_applied": [
+                "evidence_ids",
+                "verbatim_quotes",
+                "inline_citations",
+                "numbers",
+                "number_unit_pairs",
+                "limit_direction",
+                "source_sentence_scope"
+              ]
+            }
+          ]
+        },
+        {
+          "case": "supported_negation",
+          "expected_publication": true,
+          "published": false,
+          "passed": false,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "evidence_ids": [
+                "E13"
+              ],
+              "quotes": []
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "reasons": [],
+              "checks_applied": []
+            }
+          ]
+        },
+        {
+          "case": "supported_paired_units",
+          "expected_publication": true,
+          "published": false,
+          "passed": false,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "evidence_ids": [
+                "E14"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E14",
+                  "text": "The offset is 2 feet. Settlement shall not exceed 3 inches."
+                }
+              ]
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "reasons": [
+                "the source sentence that states its value is about different content"
+              ],
+              "checks_applied": [
+                "evidence_ids",
+                "verbatim_quotes",
+                "inline_citations",
+                "numbers",
+                "number_unit_pairs",
+                "limit_direction",
+                "source_sentence_scope"
+              ]
+            }
+          ]
+        },
+        {
+          "case": "supported_conditional",
+          "expected_publication": true,
+          "published": true,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "evidence_ids": [
+                "E15"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E15",
+                  "text": "If groundwater is above the footing base, provide a dewatering plan before excavation."
+                }
+              ]
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "reasons": [],
+              "checks_applied": [
+                "evidence_ids",
+                "verbatim_quotes",
+                "inline_citations",
+                "source_sentence_scope"
+              ]
+            }
+          ]
+        },
+        {
+          "case": "supported_total_differential",
+          "expected_publication": true,
+          "published": false,
+          "passed": false,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "evidence_ids": [
+                "E16"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E16",
+                  "text": "The total settlement limit is 25 mm. The differential settlement limit is 10 mm."
+                }
+              ]
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "reasons": [
+                "the limit direction is not stated the same way in the quoted text"
+              ],
+              "checks_applied": [
+                "evidence_ids",
+                "verbatim_quotes",
+                "inline_citations",
+                "numbers",
+                "number_unit_pairs",
+                "limit_direction",
+                "source_sentence_scope"
+              ]
+            }
+          ]
+        },
+        {
+          "case": "supported_temporary_permanent",
+          "expected_publication": true,
+          "published": true,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "evidence_ids": [
+                "E17"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E17",
+                  "text": "Temporary supports must remain until the permanent works reach the specified strength."
+                }
+              ]
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "reasons": [],
+              "checks_applied": [
+                "evidence_ids",
+                "verbatim_quotes",
+                "inline_citations",
+                "source_sentence_scope"
+              ]
+            }
+          ]
+        },
+        {
+          "case": "supported_source_conflict",
+          "expected_publication": true,
+          "published": false,
+          "passed": false,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "uncertain",
+              "evidence_ids": [
+                "E18"
+              ],
+              "quotes": []
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "uncertain",
+              "reasons": [],
+              "checks_applied": []
+            }
+          ]
+        },
+        {
+          "case": "supported_no_approval",
+          "expected_publication": true,
+          "published": false,
+          "passed": false,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "evidence_ids": [
+                "E19"
+              ],
+              "quotes": []
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "reasons": [],
+              "checks_applied": []
+            }
+          ]
+        },
+        {
+          "case": "swapped_quantity_units",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "evidence_ids": [
+                "E20"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E20",
+                  "text": "The offset is 2 feet. Settlement shall not exceed 3 inches."
+                }
+              ]
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "reasons": [
+                "a number with its unit is not in the quoted text",
+                "the source sentence that states its value is about different content"
+              ],
+              "checks_applied": [
+                "evidence_ids",
+                "verbatim_quotes",
+                "inline_citations",
+                "numbers",
+                "number_unit_pairs",
+                "limit_direction",
+                "source_sentence_scope"
+              ]
+            }
+          ]
+        },
+        {
+          "case": "differential_total_swap",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "evidence_ids": [
+                "E21"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E21",
+                  "text": "The total settlement limit is 25 mm. The differential settlement limit is 10 mm."
+                }
+              ]
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "reasons": [
+                "the limit direction is not stated the same way in the quoted text",
+                "its measure qualifier (differential) differs from the source sentence that states it (total)"
+              ],
+              "checks_applied": [
+                "evidence_ids",
+                "verbatim_quotes",
+                "inline_citations",
+                "numbers",
+                "number_unit_pairs",
+                "limit_direction",
+                "source_sentence_scope"
+              ]
+            }
+          ]
+        },
+        {
+          "case": "temporary_permanent_swap",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "evidence_ids": [
+                "E22"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E22",
+                  "text": "A 10 kN load is permitted on temporary supports. Permanent supports need separate design."
+                }
+              ]
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "reasons": [
+                "its duration qualifier (permanent) differs from the source sentence that states it (temporary)"
+              ],
+              "checks_applied": [
+                "evidence_ids",
+                "verbatim_quotes",
+                "inline_citations",
+                "numbers",
+                "number_unit_pairs",
+                "source_sentence_scope"
+              ]
+            }
+          ]
+        },
+        {
+          "case": "condition_removed",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "uncertain",
+              "evidence_ids": [
+                "E23"
+              ],
+              "quotes": []
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "uncertain",
+              "reasons": [],
+              "checks_applied": []
+            }
+          ]
+        },
+        {
+          "case": "unit_conversion_not_authorized",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "evidence_ids": [
+                "E24"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E24",
+                  "text": "The service settlement limit is 2 inches."
+                }
+              ]
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "reasons": [
+                "a number is not in the quoted text",
+                "a number with its unit is not in the quoted text",
+                "no quoted source sentence states one of its numbers"
+              ],
+              "checks_applied": [
+                "evidence_ids",
+                "verbatim_quotes",
+                "inline_citations",
+                "numbers",
+                "number_unit_pairs",
+                "source_sentence_scope"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "schema": "mcdxkit.grounding-benchmark/1",
+      "created": "2026-10-15T15:43:24.436099+00:00",
+      "model": "cohere/north-mini-code:free",
+      "agent_version": "knowledge/9",
+      "grounding_version": "grounding/3",
+      "fixture_sha256": "dfec79594debb3c59bbeed94fee116425c92c0cf0734788d96cebbb91f9506e2",
+      "acceptance": "All supported cases published; zero unsupported cases published. Errors and missing results fail.",
+      "limits": "Synthetic fixture benchmark, not a guarantee of factual accuracy or engineering approval.",
+      "passed": false,
+      "total": 24,
+      "supported_published": 8,
+      "supported_total": 10,
+      "unsafe_publications": 0,
+      "protocol": "pooled question stress test",
+      "cases": [
+        {
+          "case": "supported_with_conditions",
+          "expected_publication": true,
+          "published": true,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E1",
+                  "text": "For new retaining walls, total settlement shall not exceed 2 inches over 50 years. Calculate both short-term and long-term settlement."
+                }
+              ]
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "reasons": [],
+              "checks_applied": [
+                "evidence_ids",
+                "verbatim_quotes",
+                "inline_citations",
+                "numbers",
+                "number_unit_pairs",
+                "limit_direction",
+                "source_sentence_scope"
+              ]
+            }
+          ]
+        },
+        {
+          "case": "invented_number",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "evidence_ids": [],
+              "quotes": []
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "reasons": [],
+              "checks_applied": []
+            }
+          ]
+        },
+        {
+          "case": "wrong_unit_same_number",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "evidence_ids": [],
+              "quotes": []
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "reasons": [],
+              "checks_applied": []
+            }
+          ]
+        },
+        {
+          "case": "reversed_bound",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "evidence_ids": [],
+              "quotes": []
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "reasons": [],
+              "checks_applied": []
+            }
+          ]
+        },
+        {
+          "case": "wrong_scope",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "evidence_ids": [],
+              "quotes": []
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "reasons": [],
+              "checks_applied": []
+            }
+          ]
+        },
+        {
+          "case": "lost_time_condition",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "evidence_ids": [],
+              "quotes": []
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "reasons": [],
+              "checks_applied": []
+            }
+          ]
+        },
+        {
+          "case": "negation",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "evidence_ids": [],
+              "quotes": []
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "reasons": [],
+              "checks_applied": []
+            }
+          ]
+        },
+        {
+          "case": "no_relevant_evidence",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "evidence_ids": [],
+              "quotes": []
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "reasons": [],
+              "checks_applied": []
+            }
+          ]
+        },
+        {
+          "case": "invented_approval",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "evidence_ids": [],
+              "quotes": []
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "reasons": [],
+              "checks_applied": []
+            }
+          ]
+        },
+        {
+          "case": "conflict_not_resolved",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "uncertain",
+              "evidence_ids": [
+                "E10"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E10",
+                  "text": "Source A: Settlement shall not exceed 2 inches. Source B: Settlement shall not exceed 1 inch. Neither excerpt establishes revision precedence."
+                }
+              ]
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "uncertain",
+              "reasons": [],
+              "checks_applied": []
+            }
+          ]
+        },
+        {
+          "case": "supported_existing_scope",
+          "expected_publication": true,
+          "published": false,
+          "passed": false,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "evidence_ids": [],
+              "quotes": []
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "reasons": [],
+              "checks_applied": []
+            }
+          ]
+        },
+        {
+          "case": "supported_minimum",
+          "expected_publication": true,
+          "published": true,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "evidence_ids": [
+                "E12"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E12",
+                  "text": "Pile embedment shall be at least 1.5 m below the bearing stratum."
+                }
+              ]
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "reasons": [],
+              "checks_applied": [
+                "evidence_ids",
+                "verbatim_quotes",
+                "inline_citations",
+                "numbers",
+                "number_unit_pairs",
+                "limit_direction",
+                "source_sentence_scope"
+              ]
+            }
+          ]
+        },
+        {
+          "case": "supported_negation",
+          "expected_publication": true,
+          "published": false,
+          "passed": false,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "evidence_ids": [],
+              "quotes": []
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "reasons": [],
+              "checks_applied": []
+            }
+          ]
+        },
+        {
+          "case": "supported_paired_units",
+          "expected_publication": true,
+          "published": true,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "evidence_ids": [
+                "E14"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E14",
+                  "text": "The offset is 2 feet. Settlement shall not exceed 3 inches."
+                }
+              ]
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "reasons": [],
+              "checks_applied": [
+                "evidence_ids",
+                "verbatim_quotes",
+                "inline_citations",
+                "numbers",
+                "number_unit_pairs",
+                "limit_direction",
+                "source_sentence_scope"
+              ]
+            }
+          ]
+        },
+        {
+          "case": "supported_conditional",
+          "expected_publication": true,
+          "published": true,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "evidence_ids": [
+                "E15"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E15",
+                  "text": "If groundwater is above the footing base, provide a dewatering plan before excavation."
+                }
+              ]
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "reasons": [],
+              "checks_applied": [
+                "evidence_ids",
+                "verbatim_quotes",
+                "inline_citations",
+                "source_sentence_scope"
+              ]
+            }
+          ]
+        },
+        {
+          "case": "supported_total_differential",
+          "expected_publication": true,
+          "published": true,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "evidence_ids": [
+                "E16"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E16",
+                  "text": "The total settlement limit is 25 mm. The differential settlement limit is 10 mm."
+                }
+              ]
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "reasons": [],
+              "checks_applied": [
+                "evidence_ids",
+                "verbatim_quotes",
+                "inline_citations",
+                "numbers",
+                "number_unit_pairs",
+                "limit_direction",
+                "source_sentence_scope"
+              ]
+            }
+          ]
+        },
+        {
+          "case": "supported_temporary_permanent",
+          "expected_publication": true,
+          "published": true,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "evidence_ids": [
+                "E17"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E17",
+                  "text": "Temporary supports must remain until the permanent works reach the specified strength."
+                }
+              ]
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "reasons": [],
+              "checks_applied": [
+                "evidence_ids",
+                "verbatim_quotes",
+                "inline_citations",
+                "source_sentence_scope"
+              ]
+            }
+          ]
+        },
+        {
+          "case": "supported_source_conflict",
+          "expected_publication": true,
+          "published": true,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "evidence_ids": [
+                "E18"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E18",
+                  "text": "Source A limits settlement to 2 inches. Source B limits settlement to 1 inch. No precedence is established."
+                }
+              ]
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "reasons": [],
+              "checks_applied": [
+                "evidence_ids",
+                "verbatim_quotes",
+                "inline_citations",
+                "numbers",
+                "number_unit_pairs",
+                "limit_direction",
+                "source_sentence_scope"
+              ]
+            }
+          ]
+        },
+        {
+          "case": "supported_no_approval",
+          "expected_publication": true,
+          "published": true,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "evidence_ids": [
+                "E19"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E19",
+                  "text": "The design has been submitted for review. No approval has been issued."
+                }
+              ]
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "reasons": [],
+              "checks_applied": [
+                "evidence_ids",
+                "verbatim_quotes",
+                "inline_citations",
+                "source_sentence_scope"
+              ]
+            }
+          ]
+        },
+        {
+          "case": "swapped_quantity_units",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "evidence_ids": [
+                "E20"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E20",
+                  "text": "The offset is 2 feet. Settlement shall not exceed 3 inches."
+                }
+              ]
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "reasons": [
+                "a number with its unit is not in the quoted text",
+                "it drops a condition stated with the value (2 ft)"
+              ],
+              "checks_applied": [
+                "evidence_ids",
+                "verbatim_quotes",
+                "inline_citations",
+                "numbers",
+                "number_unit_pairs",
+                "limit_direction",
+                "source_sentence_scope"
+              ]
+            }
+          ]
+        },
+        {
+          "case": "differential_total_swap",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "evidence_ids": [
+                "E21"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E21",
+                  "text": "The total settlement limit is 25 mm. The differential settlement limit is 10 mm."
+                }
+              ]
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "reasons": [
+                "its measure qualifier (differential) differs from the source sentence that states it (total)"
+              ],
+              "checks_applied": [
+                "evidence_ids",
+                "verbatim_quotes",
+                "inline_citations",
+                "numbers",
+                "number_unit_pairs",
+                "limit_direction",
+                "source_sentence_scope"
+              ]
+            }
+          ]
+        },
+        {
+          "case": "temporary_permanent_swap",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "evidence_ids": [
+                "E22"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E22",
+                  "text": "A 10 kN load is permitted on temporary supports. Permanent supports need separate design."
+                }
+              ]
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "reasons": [
+                "its duration qualifier (permanent) differs from the source sentence that states it (temporary)"
+              ],
+              "checks_applied": [
+                "evidence_ids",
+                "verbatim_quotes",
+                "inline_citations",
+                "numbers",
+                "number_unit_pairs",
+                "source_sentence_scope"
+              ]
+            }
+          ]
+        },
+        {
+          "case": "condition_removed",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "evidence_ids": [],
+              "quotes": []
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "reasons": [],
+              "checks_applied": []
+            }
+          ]
+        },
+        {
+          "case": "unit_conversion_not_authorized",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "evidence_ids": [
+                "E24"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E24",
+                  "text": "The service settlement limit is 2 inches."
+                }
+              ]
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "reasons": [
+                "a number is not in the quoted text",
+                "a number with its unit is not in the quoted text",
+                "no quoted source sentence states one of its numbers"
+              ],
+              "checks_applied": [
+                "evidence_ids",
+                "verbatim_quotes",
+                "inline_citations",
+                "numbers",
+                "number_unit_pairs",
+                "limit_direction",
+                "source_sentence_scope"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "schema": "mcdxkit.grounding-benchmark/1",
+      "created": "2026-10-15T15:45:34.262818+00:00",
+      "model": "cohere/north-mini-code:free",
+      "agent_version": "knowledge/9",
+      "grounding_version": "grounding/3",
+      "fixture_sha256": "dfec79594debb3c59bbeed94fee116425c92c0cf0734788d96cebbb91f9506e2",
+      "protocol": "isolated questions",
+      "batch_size": 1,
+      "acceptance": "All supported cases published; zero unsupported cases published. Errors and missing results fail.",
+      "limits": "Synthetic fixture benchmark, not a guarantee of factual accuracy or engineering approval.",
+      "passed": true,
+      "total": 24,
+      "supported_published": 10,
+      "supported_total": 10,
+      "unsafe_publications": 0,
+      "errors": 0,
+      "cases": [
+        {
+          "case": "supported_with_conditions",
+          "expected_publication": true,
+          "published": true,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E1",
+                  "text": "For new retaining walls, total settlement shall not exceed 2 inches over 50 years."
+                },
+                {
+                  "evidence_id": "E1",
+                  "text": "Calculate both short-term and long-term settlement."
+                }
+              ]
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "reasons": [],
+              "checks_applied": [
+                "evidence_ids",
+                "verbatim_quotes",
+                "inline_citations",
+                "numbers",
+                "number_unit_pairs",
+                "limit_direction",
+                "source_sentence_scope"
+              ]
+            }
+          ]
+        },
+        {
+          "case": "invented_number",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E1",
+                  "text": "For new retaining walls, total settlement shall not exceed 2 inches over 50 years."
+                }
+              ]
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "reasons": [],
+              "checks_applied": []
+            }
+          ]
+        },
+        {
+          "case": "wrong_unit_same_number",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E1",
+                  "text": "For new retaining walls, total settlement shall not exceed 2 inches over 50 years."
+                }
+              ]
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "reasons": [],
+              "checks_applied": []
+            }
+          ]
+        },
+        {
+          "case": "reversed_bound",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E1",
+                  "text": "For new retaining walls, total settlement shall not exceed 2 inches over 50 years."
+                }
+              ]
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "reasons": [],
+              "checks_applied": []
+            }
+          ]
+        },
+        {
+          "case": "wrong_scope",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E1",
+                  "text": "For new retaining walls, total settlement shall not exceed 2 inches over 50 years."
+                }
+              ]
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "reasons": [],
+              "checks_applied": []
+            }
+          ]
+        },
+        {
+          "case": "lost_time_condition",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E1",
+                  "text": "For new retaining walls, total settlement shall not exceed 2 inches over 50 years."
+                }
+              ]
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "reasons": [],
+              "checks_applied": []
+            }
+          ]
+        },
+        {
+          "case": "negation",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E1",
+                  "text": "Direct attachment of the concrete barrier to the retaining wall stem is not allowed."
+                }
+              ]
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "reasons": [],
+              "checks_applied": []
+            }
+          ]
+        },
+        {
+          "case": "no_relevant_evidence",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": []
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "reasons": [],
+              "checks_applied": []
+            }
+          ]
+        },
+        {
+          "case": "invented_approval",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E1",
+                  "text": "The design must be submitted to the engineer for review."
+                }
+              ]
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "reasons": [],
+              "checks_applied": []
+            }
+          ]
+        },
+        {
+          "case": "conflict_not_resolved",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E1",
+                  "text": "Settlement shall not exceed 2 inches."
+                }
+              ]
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "reasons": [
+                "the source sentence that states it is about different content"
+              ],
+              "checks_applied": [
+                "evidence_ids",
+                "verbatim_quotes",
+                "inline_citations",
+                "numbers",
+                "number_unit_pairs",
+                "limit_direction",
+                "source_sentence_scope"
+              ]
+            }
+          ]
+        },
+        {
+          "case": "supported_existing_scope",
+          "expected_publication": true,
+          "published": true,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E1",
+                  "text": "For existing retaining walls, assess settlement separately."
+                }
+              ]
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "reasons": [],
+              "checks_applied": [
+                "evidence_ids",
+                "verbatim_quotes",
+                "inline_citations",
+                "source_sentence_scope"
+              ]
+            }
+          ]
+        },
+        {
+          "case": "supported_minimum",
+          "expected_publication": true,
+          "published": true,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E1",
+                  "text": "Pile embedment shall be at least 1.5 m below the bearing stratum."
+                }
+              ]
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "reasons": [],
+              "checks_applied": [
+                "evidence_ids",
+                "verbatim_quotes",
+                "inline_citations",
+                "numbers",
+                "number_unit_pairs",
+                "limit_direction",
+                "source_sentence_scope"
+              ]
+            }
+          ]
+        },
+        {
+          "case": "supported_negation",
+          "expected_publication": true,
+          "published": true,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E1",
+                  "text": "Direct attachment of the concrete barrier to the retaining wall stem is not allowed."
+                }
+              ]
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "reasons": [],
+              "checks_applied": [
+                "evidence_ids",
+                "verbatim_quotes",
+                "inline_citations",
+                "source_sentence_scope"
+              ]
+            }
+          ]
+        },
+        {
+          "case": "supported_paired_units",
+          "expected_publication": true,
+          "published": true,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E1",
+                  "text": "The offset is 2 feet. Settlement shall not exceed 3 inches."
+                }
+              ]
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "reasons": [],
+              "checks_applied": [
+                "evidence_ids",
+                "verbatim_quotes",
+                "inline_citations",
+                "numbers",
+                "number_unit_pairs",
+                "limit_direction",
+                "source_sentence_scope"
+              ]
+            }
+          ]
+        },
+        {
+          "case": "supported_conditional",
+          "expected_publication": true,
+          "published": true,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E1",
+                  "text": "If groundwater is above the footing base, provide a dewatering plan before excavation."
+                }
+              ]
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "reasons": [],
+              "checks_applied": [
+                "evidence_ids",
+                "verbatim_quotes",
+                "inline_citations",
+                "source_sentence_scope"
+              ]
+            }
+          ]
+        },
+        {
+          "case": "supported_total_differential",
+          "expected_publication": true,
+          "published": true,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E1",
+                  "text": "The total settlement limit is 25 mm. The differential settlement limit is 10 mm."
+                }
+              ]
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "reasons": [],
+              "checks_applied": [
+                "evidence_ids",
+                "verbatim_quotes",
+                "inline_citations",
+                "numbers",
+                "number_unit_pairs",
+                "limit_direction",
+                "source_sentence_scope"
+              ]
+            }
+          ]
+        },
+        {
+          "case": "supported_temporary_permanent",
+          "expected_publication": true,
+          "published": true,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E1",
+                  "text": "Temporary supports must remain until the permanent works reach the specified strength."
+                }
+              ]
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "reasons": [],
+              "checks_applied": [
+                "evidence_ids",
+                "verbatim_quotes",
+                "inline_citations",
+                "source_sentence_scope"
+              ]
+            }
+          ]
+        },
+        {
+          "case": "supported_source_conflict",
+          "expected_publication": true,
+          "published": true,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E1",
+                  "text": "Source A limits settlement to 2 inches. Source B limits settlement to 1 inch. No precedence is established."
+                }
+              ]
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "reasons": [],
+              "checks_applied": [
+                "evidence_ids",
+                "verbatim_quotes",
+                "inline_citations",
+                "numbers",
+                "number_unit_pairs",
+                "limit_direction",
+                "source_sentence_scope"
+              ]
+            }
+          ]
+        },
+        {
+          "case": "supported_no_approval",
+          "expected_publication": true,
+          "published": true,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E1",
+                  "text": "The design has been submitted for review. No approval has been issued."
+                }
+              ]
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "reasons": [],
+              "checks_applied": [
+                "evidence_ids",
+                "verbatim_quotes",
+                "inline_citations",
+                "source_sentence_scope"
+              ]
+            }
+          ]
+        },
+        {
+          "case": "swapped_quantity_units",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E1",
+                  "text": "Settlement shall not exceed 3 inches."
+                }
+              ]
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "reasons": [],
+              "checks_applied": []
+            }
+          ]
+        },
+        {
+          "case": "differential_total_swap",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E1",
+                  "text": "The total settlement limit is 25 mm. The differential settlement limit is 10 mm."
+                }
+              ]
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "reasons": [],
+              "checks_applied": []
+            }
+          ]
+        },
+        {
+          "case": "temporary_permanent_swap",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E1",
+                  "text": "A 10 kN load is permitted on temporary supports."
+                }
+              ]
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "reasons": [],
+              "checks_applied": []
+            }
+          ]
+        },
+        {
+          "case": "condition_removed",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E1",
+                  "text": "If groundwater is above the footing base, provide a dewatering plan before excavation."
+                }
+              ]
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "reasons": [],
+              "checks_applied": []
+            }
+          ]
+        },
+        {
+          "case": "unit_conversion_not_authorized",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E1",
+                  "text": "The service settlement limit is 2 inches."
+                }
+              ]
+            }
+          ],
+          "checks": [
+            {
+              "id": "S1",
+              "verdict": "structural",
+              "reasons": [],
+              "checks_applied": []
+            },
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "reasons": [],
+              "checks_applied": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "schema": "mcdxkit.grounding-benchmark/1",
+      "created": "2026-10-15T15:34:29.101196+00:00",
+      "model": "google/gemma-4-31b-it:free",
+      "agent_version": "knowledge/9",
+      "grounding_version": "grounding/2",
+      "fixture_sha256": "dfec79594debb3c59bbeed94fee116425c92c0cf0734788d96cebbb91f9506e2",
+      "acceptance": "All supported cases published; zero unsupported cases published. Errors and missing results fail.",
+      "limits": "Synthetic fixture benchmark, not a guarantee of factual accuracy or engineering approval.",
+      "passed": false,
+      "error": "OpenAIRateLimitError",
+      "reason": "Provider or protocol failed; no score claimed and no retry made.",
+      "protocol": "pooled question stress test",
+      "cases": []
+    },
+    {
+      "schema": "mcdxkit.grounding-benchmark/1",
+      "created": "2026-10-15T15:38:50.140551+00:00",
+      "model": "google/gemma-4-26b-a4b-it:free",
+      "agent_version": "knowledge/9",
+      "grounding_version": "grounding/2",
+      "fixture_sha256": "dfec79594debb3c59bbeed94fee116425c92c0cf0734788d96cebbb91f9506e2",
+      "acceptance": "All supported cases published; zero unsupported cases published. Errors and missing results fail.",
+      "limits": "Synthetic fixture benchmark, not a guarantee of factual accuracy or engineering approval.",
+      "passed": false,
+      "error": "OpenAIRateLimitError",
+      "reason": "Provider or protocol failed; no score claimed and no retry made.",
+      "protocol": "pooled question stress test",
+      "cases": []
+    },
+    {
+      "schema": "mcdxkit.grounding-benchmark/1",
+      "created": "2026-10-15T15:34:29.105606+00:00",
+      "model": "nvidia/nemotron-3.5-lightning:free",
+      "agent_version": "knowledge/9",
+      "grounding_version": "grounding/2",
+      "fixture_sha256": "dfec79594debb3c59bbeed94fee116425c92c0cf0734788d96cebbb91f9506e2",
+      "acceptance": "All supported cases published; zero unsupported cases published. Errors and missing results fail.",
+      "limits": "Synthetic fixture benchmark, not a guarantee of factual accuracy or engineering approval.",
+      "passed": false,
+      "error": "OpenAIModelNotFoundError",
+      "reason": "Provider or protocol failed; no score claimed and no retry made.",
+      "protocol": "pooled question stress test",
+      "cases": []
+    },
+    {
+      "schema": "mcdxkit.grounding-benchmark/1",
+      "created": "2026-10-15T15:34:29.127635+00:00",
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "agent_version": "knowledge/9",
+      "grounding_version": "grounding/2",
+      "fixture_sha256": "dfec79594debb3c59bbeed94fee116425c92c0cf0734788d96cebbb91f9506e2",
+      "acceptance": "All supported cases published; zero unsupported cases published. Errors and missing results fail.",
+      "limits": "Synthetic fixture benchmark, not a guarantee of factual accuracy or engineering approval.",
+      "passed": false,
+      "error": "OpenAIModelNotFoundError",
+      "reason": "Provider or protocol failed; no score claimed and no retry made.",
+      "protocol": "pooled question stress test",
+      "cases": []
+    },
+    {
+      "schema": "mcdxkit.grounding-benchmark/1",
+      "created": "2026-10-15T15:38:50.101072+00:00",
+      "model": "thinkingmachines/inkling:free",
+      "agent_version": "knowledge/9",
+      "grounding_version": "grounding/2",
+      "fixture_sha256": "dfec79594debb3c59bbeed94fee116425c92c0cf0734788d96cebbb91f9506e2",
+      "acceptance": "All supported cases published; zero unsupported cases published. Errors and missing results fail.",
+      "limits": "Synthetic fixture benchmark, not a guarantee of factual accuracy or engineering approval.",
+      "passed": false,
+      "error": "OpenAIPermissionDeniedError",
+      "reason": "Provider or protocol failed; no score claimed and no retry made.",
+      "protocol": "pooled question stress test",
+      "cases": []
+    },
+    {
+      "schema": "mcdxkit.grounding-benchmark/1",
+      "created": "2026-10-15T16:15:31.208287+00:00",
+      "model": "cohere/north-mini-code:free",
+      "agent_version": "knowledge/9",
+      "grounding_version": "grounding/4",
+      "fixture_sha256": "dfec79594debb3c59bbeed94fee116425c92c0cf0734788d96cebbb91f9506e2",
+      "protocol": "isolated questions",
+      "batch_size": 1,
+      "acceptance": "All supported cases published; zero unsupported cases published. Errors and missing results fail.",
+      "limits": "Synthetic fixture benchmark, not a guarantee of factual accuracy or engineering approval.",
+      "passed": true,
+      "total": 24,
+      "supported_published": 10,
+      "supported_total": 10,
+      "unsafe_publications": 0,
+      "errors": 0,
+      "cases": [
+        {
+          "case": "supported_with_conditions",
+          "expected_publication": true,
+          "published": true,
+          "passed": true,
+          "grounding": {
+            "version": "grounding/4",
+            "status": "grounded",
+            "statements": [
+              {
+                "id": "S1",
+                "kind": "heading",
+                "section": 0,
+                "anchored": false,
+                "verdict": "structural",
+                "reasons": [],
+                "checks_applied": [],
+                "text": "Requirement"
+              },
+              {
+                "id": "S2",
+                "kind": "section",
+                "section": 0,
+                "anchored": true,
+                "verdict": "supported",
+                "reasons": [],
+                "checks_applied": [
+                  "evidence_ids",
+                  "verbatim_quotes",
+                  "inline_citations",
+                  "numbers",
+                  "number_unit_pairs",
+                  "limit_direction",
+                  "source_sentence_scope"
+                ],
+                "evidence_ids": [
+                  "E1"
+                ],
+                "quotes": [
+                  {
+                    "evidence_id": "E1",
+                    "text": "For new retaining walls, total settlement shall not exceed 2 inches over 50 years."
+                  },
+                  {
+                    "evidence_id": "E1",
+                    "text": "Calculate both short-term and long-term settlement."
+                  }
+                ],
+                "text": "For new retaining walls, total settlement must not exceed 2 inches over 50 years, considering short-term and long-term settlement. [E1]"
+              }
+            ],
+            "scope": {
+              "retrieval": "Top-ranked passages were searched in 1 of 1 documents; this is not a review of every page or every document.",
+              "precedence": "Revision precedence between documents was not verified.",
+              "approval": "Not an engineering review, code-compliance check or approval."
+            },
+            "coverage": "searchable_documents",
+            "inline_anchored": 1,
+            "checked_statements": 1
+          },
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E1",
+                  "text": "For new retaining walls, total settlement shall not exceed 2 inches over 50 years."
+                },
+                {
+                  "evidence_id": "E1",
+                  "text": "Calculate both short-term and long-term settlement."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "case": "invented_number",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "grounding": {
+            "version": "grounding/4",
+            "status": "withheld",
+            "draft_withheld": true,
+            "reason_code": "statements_unconfirmed",
+            "statements": [
+              {
+                "id": "S1",
+                "kind": "heading",
+                "section": 0,
+                "anchored": false,
+                "verdict": "structural",
+                "reasons": [],
+                "checks_applied": []
+              },
+              {
+                "id": "S2",
+                "kind": "section",
+                "section": 0,
+                "anchored": true,
+                "verdict": "unsupported",
+                "reasons": [],
+                "checks_applied": []
+              }
+            ],
+            "scope": {
+              "retrieval": "Top-ranked passages were searched in 1 of 1 documents; this is not a review of every page or every document.",
+              "precedence": "Revision precedence between documents was not verified.",
+              "approval": "Not an engineering review, code-compliance check or approval."
+            }
+          },
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": []
+            }
+          ]
+        },
+        {
+          "case": "wrong_unit_same_number",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "grounding": {
+            "version": "grounding/4",
+            "status": "withheld",
+            "draft_withheld": true,
+            "reason_code": "statements_unconfirmed",
+            "statements": [
+              {
+                "id": "S1",
+                "kind": "heading",
+                "section": 0,
+                "anchored": false,
+                "verdict": "structural",
+                "reasons": [],
+                "checks_applied": []
+              },
+              {
+                "id": "S2",
+                "kind": "section",
+                "section": 0,
+                "anchored": true,
+                "verdict": "unsupported",
+                "reasons": [],
+                "checks_applied": []
+              }
+            ],
+            "scope": {
+              "retrieval": "Top-ranked passages were searched in 1 of 1 documents; this is not a review of every page or every document.",
+              "precedence": "Revision precedence between documents was not verified.",
+              "approval": "Not an engineering review, code-compliance check or approval."
+            }
+          },
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": []
+            }
+          ]
+        },
+        {
+          "case": "reversed_bound",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "grounding": {
+            "version": "grounding/4",
+            "status": "withheld",
+            "draft_withheld": true,
+            "reason_code": "statements_unconfirmed",
+            "statements": [
+              {
+                "id": "S1",
+                "kind": "heading",
+                "section": 0,
+                "anchored": false,
+                "verdict": "structural",
+                "reasons": [],
+                "checks_applied": []
+              },
+              {
+                "id": "S2",
+                "kind": "section",
+                "section": 0,
+                "anchored": true,
+                "verdict": "unsupported",
+                "reasons": [],
+                "checks_applied": []
+              }
+            ],
+            "scope": {
+              "retrieval": "Top-ranked passages were searched in 1 of 1 documents; this is not a review of every page or every document.",
+              "precedence": "Revision precedence between documents was not verified.",
+              "approval": "Not an engineering review, code-compliance check or approval."
+            }
+          },
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": []
+            }
+          ]
+        },
+        {
+          "case": "wrong_scope",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "grounding": {
+            "version": "grounding/4",
+            "status": "withheld",
+            "draft_withheld": true,
+            "reason_code": "statements_unconfirmed",
+            "statements": [
+              {
+                "id": "S1",
+                "kind": "heading",
+                "section": 0,
+                "anchored": false,
+                "verdict": "structural",
+                "reasons": [],
+                "checks_applied": []
+              },
+              {
+                "id": "S2",
+                "kind": "section",
+                "section": 0,
+                "anchored": true,
+                "verdict": "unsupported",
+                "reasons": [],
+                "checks_applied": []
+              }
+            ],
+            "scope": {
+              "retrieval": "Top-ranked passages were searched in 1 of 1 documents; this is not a review of every page or every document.",
+              "precedence": "Revision precedence between documents was not verified.",
+              "approval": "Not an engineering review, code-compliance check or approval."
+            }
+          },
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "evidence_ids": [],
+              "quotes": []
+            }
+          ]
+        },
+        {
+          "case": "lost_time_condition",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "grounding": {
+            "version": "grounding/4",
+            "status": "withheld",
+            "draft_withheld": true,
+            "reason_code": "statements_unconfirmed",
+            "statements": [
+              {
+                "id": "S1",
+                "kind": "heading",
+                "section": 0,
+                "anchored": false,
+                "verdict": "structural",
+                "reasons": [],
+                "checks_applied": []
+              },
+              {
+                "id": "S2",
+                "kind": "section",
+                "section": 0,
+                "anchored": true,
+                "verdict": "unsupported",
+                "reasons": [],
+                "checks_applied": []
+              }
+            ],
+            "scope": {
+              "retrieval": "Top-ranked passages were searched in 1 of 1 documents; this is not a review of every page or every document.",
+              "precedence": "Revision precedence between documents was not verified.",
+              "approval": "Not an engineering review, code-compliance check or approval."
+            }
+          },
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": []
+            }
+          ]
+        },
+        {
+          "case": "negation",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "grounding": {
+            "version": "grounding/4",
+            "status": "withheld",
+            "draft_withheld": true,
+            "reason_code": "statements_unconfirmed",
+            "statements": [
+              {
+                "id": "S1",
+                "kind": "heading",
+                "section": 0,
+                "anchored": false,
+                "verdict": "structural",
+                "reasons": [],
+                "checks_applied": []
+              },
+              {
+                "id": "S2",
+                "kind": "section",
+                "section": 0,
+                "anchored": true,
+                "verdict": "unsupported",
+                "reasons": [],
+                "checks_applied": []
+              }
+            ],
+            "scope": {
+              "retrieval": "Top-ranked passages were searched in 1 of 1 documents; this is not a review of every page or every document.",
+              "precedence": "Revision precedence between documents was not verified.",
+              "approval": "Not an engineering review, code-compliance check or approval."
+            }
+          },
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": []
+            }
+          ]
+        },
+        {
+          "case": "no_relevant_evidence",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "grounding": {
+            "version": "grounding/4",
+            "status": "withheld",
+            "draft_withheld": true,
+            "reason_code": "statements_unconfirmed",
+            "statements": [
+              {
+                "id": "S1",
+                "kind": "heading",
+                "section": 0,
+                "anchored": false,
+                "verdict": "structural",
+                "reasons": [],
+                "checks_applied": []
+              },
+              {
+                "id": "S2",
+                "kind": "section",
+                "section": 0,
+                "anchored": true,
+                "verdict": "unsupported",
+                "reasons": [],
+                "checks_applied": []
+              }
+            ],
+            "scope": {
+              "retrieval": "Top-ranked passages were searched in 1 of 1 documents; this is not a review of every page or every document.",
+              "precedence": "Revision precedence between documents was not verified.",
+              "approval": "Not an engineering review, code-compliance check or approval."
+            }
+          },
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": []
+            }
+          ]
+        },
+        {
+          "case": "invented_approval",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "grounding": {
+            "version": "grounding/4",
+            "status": "withheld",
+            "draft_withheld": true,
+            "reason_code": "statements_unconfirmed",
+            "statements": [
+              {
+                "id": "S1",
+                "kind": "heading",
+                "section": 0,
+                "anchored": false,
+                "verdict": "structural",
+                "reasons": [],
+                "checks_applied": []
+              },
+              {
+                "id": "S2",
+                "kind": "section",
+                "section": 0,
+                "anchored": true,
+                "verdict": "unsupported",
+                "reasons": [],
+                "checks_applied": []
+              }
+            ],
+            "scope": {
+              "retrieval": "Top-ranked passages were searched in 1 of 1 documents; this is not a review of every page or every document.",
+              "precedence": "Revision precedence between documents was not verified.",
+              "approval": "Not an engineering review, code-compliance check or approval."
+            }
+          },
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": []
+            }
+          ]
+        },
+        {
+          "case": "conflict_not_resolved",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "grounding": {
+            "version": "grounding/4",
+            "status": "withheld",
+            "draft_withheld": true,
+            "reason_code": "statements_unconfirmed",
+            "statements": [
+              {
+                "id": "S1",
+                "kind": "heading",
+                "section": 0,
+                "anchored": false,
+                "verdict": "structural",
+                "reasons": [],
+                "checks_applied": []
+              },
+              {
+                "id": "S2",
+                "kind": "section",
+                "section": 0,
+                "anchored": true,
+                "verdict": "uncertain",
+                "reasons": [],
+                "checks_applied": []
+              }
+            ],
+            "scope": {
+              "retrieval": "Top-ranked passages were searched in 1 of 1 documents; this is not a review of every page or every document.",
+              "precedence": "Revision precedence between documents was not verified.",
+              "approval": "Not an engineering review, code-compliance check or approval."
+            }
+          },
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "uncertain",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": []
+            }
+          ]
+        },
+        {
+          "case": "supported_existing_scope",
+          "expected_publication": true,
+          "published": true,
+          "passed": true,
+          "grounding": {
+            "version": "grounding/4",
+            "status": "grounded",
+            "statements": [
+              {
+                "id": "S1",
+                "kind": "heading",
+                "section": 0,
+                "anchored": false,
+                "verdict": "structural",
+                "reasons": [],
+                "checks_applied": [],
+                "text": "Requirement"
+              },
+              {
+                "id": "S2",
+                "kind": "section",
+                "section": 0,
+                "anchored": true,
+                "verdict": "supported",
+                "reasons": [],
+                "checks_applied": [
+                  "evidence_ids",
+                  "verbatim_quotes",
+                  "inline_citations",
+                  "source_sentence_scope"
+                ],
+                "evidence_ids": [
+                  "E1"
+                ],
+                "quotes": [
+                  {
+                    "evidence_id": "E1",
+                    "text": "For existing retaining walls, assess settlement separately."
+                  }
+                ],
+                "text": "Existing retaining walls require a separate settlement assessment. [E1]"
+              }
+            ],
+            "scope": {
+              "retrieval": "Top-ranked passages were searched in 1 of 1 documents; this is not a review of every page or every document.",
+              "precedence": "Revision precedence between documents was not verified.",
+              "approval": "Not an engineering review, code-compliance check or approval."
+            },
+            "coverage": "searchable_documents",
+            "inline_anchored": 1,
+            "checked_statements": 1
+          },
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E1",
+                  "text": "For existing retaining walls, assess settlement separately."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "case": "supported_minimum",
+          "expected_publication": true,
+          "published": true,
+          "passed": true,
+          "grounding": {
+            "version": "grounding/4",
+            "status": "grounded",
+            "statements": [
+              {
+                "id": "S1",
+                "kind": "heading",
+                "section": 0,
+                "anchored": false,
+                "verdict": "structural",
+                "reasons": [],
+                "checks_applied": [],
+                "text": "Requirement"
+              },
+              {
+                "id": "S2",
+                "kind": "section",
+                "section": 0,
+                "anchored": true,
+                "verdict": "supported",
+                "reasons": [],
+                "checks_applied": [
+                  "evidence_ids",
+                  "verbatim_quotes",
+                  "inline_citations",
+                  "numbers",
+                  "number_unit_pairs",
+                  "limit_direction",
+                  "source_sentence_scope"
+                ],
+                "evidence_ids": [
+                  "E1"
+                ],
+                "quotes": [
+                  {
+                    "evidence_id": "E1",
+                    "text": "Pile embedment shall be at least 1.5 m below the bearing stratum."
+                  }
+                ],
+                "text": "Pile embedment must be at least 1.5 m below the bearing stratum. [E1]"
+              }
+            ],
+            "scope": {
+              "retrieval": "Top-ranked passages were searched in 1 of 1 documents; this is not a review of every page or every document.",
+              "precedence": "Revision precedence between documents was not verified.",
+              "approval": "Not an engineering review, code-compliance check or approval."
+            },
+            "coverage": "searchable_documents",
+            "inline_anchored": 1,
+            "checked_statements": 1
+          },
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E1",
+                  "text": "Pile embedment shall be at least 1.5 m below the bearing stratum."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "case": "supported_negation",
+          "expected_publication": true,
+          "published": true,
+          "passed": true,
+          "grounding": {
+            "version": "grounding/4",
+            "status": "grounded",
+            "statements": [
+              {
+                "id": "S1",
+                "kind": "heading",
+                "section": 0,
+                "anchored": false,
+                "verdict": "structural",
+                "reasons": [],
+                "checks_applied": [],
+                "text": "Requirement"
+              },
+              {
+                "id": "S2",
+                "kind": "section",
+                "section": 0,
+                "anchored": true,
+                "verdict": "supported",
+                "reasons": [],
+                "checks_applied": [
+                  "evidence_ids",
+                  "verbatim_quotes",
+                  "inline_citations",
+                  "source_sentence_scope"
+                ],
+                "evidence_ids": [
+                  "E1"
+                ],
+                "quotes": [
+                  {
+                    "evidence_id": "E1",
+                    "text": "Direct attachment of the concrete barrier to the retaining wall stem is not allowed."
+                  }
+                ],
+                "text": "Direct attachment of the concrete barrier to the retaining wall stem is prohibited. [E1]"
+              }
+            ],
+            "scope": {
+              "retrieval": "Top-ranked passages were searched in 1 of 1 documents; this is not a review of every page or every document.",
+              "precedence": "Revision precedence between documents was not verified.",
+              "approval": "Not an engineering review, code-compliance check or approval."
+            },
+            "coverage": "searchable_documents",
+            "inline_anchored": 1,
+            "checked_statements": 1
+          },
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E1",
+                  "text": "Direct attachment of the concrete barrier to the retaining wall stem is not allowed."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "case": "supported_paired_units",
+          "expected_publication": true,
+          "published": true,
+          "passed": true,
+          "grounding": {
+            "version": "grounding/4",
+            "status": "grounded",
+            "statements": [
+              {
+                "id": "S1",
+                "kind": "heading",
+                "section": 0,
+                "anchored": false,
+                "verdict": "structural",
+                "reasons": [],
+                "checks_applied": [],
+                "text": "Requirement"
+              },
+              {
+                "id": "S2",
+                "kind": "section",
+                "section": 0,
+                "anchored": true,
+                "verdict": "supported",
+                "reasons": [],
+                "checks_applied": [
+                  "evidence_ids",
+                  "verbatim_quotes",
+                  "inline_citations",
+                  "numbers",
+                  "number_unit_pairs",
+                  "limit_direction",
+                  "source_sentence_scope"
+                ],
+                "evidence_ids": [
+                  "E1"
+                ],
+                "quotes": [
+                  {
+                    "evidence_id": "E1",
+                    "text": "The offset is 2 feet. Settlement shall not exceed 3 inches."
+                  }
+                ],
+                "text": "The offset is 2 feet; settlement shall not exceed 3 inches. [E1]"
+              }
+            ],
+            "scope": {
+              "retrieval": "Top-ranked passages were searched in 1 of 1 documents; this is not a review of every page or every document.",
+              "precedence": "Revision precedence between documents was not verified.",
+              "approval": "Not an engineering review, code-compliance check or approval."
+            },
+            "coverage": "searchable_documents",
+            "inline_anchored": 1,
+            "checked_statements": 1
+          },
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E1",
+                  "text": "The offset is 2 feet. Settlement shall not exceed 3 inches."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "case": "supported_conditional",
+          "expected_publication": true,
+          "published": true,
+          "passed": true,
+          "grounding": {
+            "version": "grounding/4",
+            "status": "grounded",
+            "statements": [
+              {
+                "id": "S1",
+                "kind": "heading",
+                "section": 0,
+                "anchored": false,
+                "verdict": "structural",
+                "reasons": [],
+                "checks_applied": [],
+                "text": "Requirement"
+              },
+              {
+                "id": "S2",
+                "kind": "section",
+                "section": 0,
+                "anchored": true,
+                "verdict": "supported",
+                "reasons": [],
+                "checks_applied": [
+                  "evidence_ids",
+                  "verbatim_quotes",
+                  "inline_citations",
+                  "source_sentence_scope"
+                ],
+                "evidence_ids": [
+                  "E1"
+                ],
+                "quotes": [
+                  {
+                    "evidence_id": "E1",
+                    "text": "If groundwater is above the footing base, provide a dewatering plan before excavation."
+                  }
+                ],
+                "text": "When groundwater is above the footing base, a dewatering plan is required before excavation. [E1]"
+              }
+            ],
+            "scope": {
+              "retrieval": "Top-ranked passages were searched in 1 of 1 documents; this is not a review of every page or every document.",
+              "precedence": "Revision precedence between documents was not verified.",
+              "approval": "Not an engineering review, code-compliance check or approval."
+            },
+            "coverage": "searchable_documents",
+            "inline_anchored": 1,
+            "checked_statements": 1
+          },
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E1",
+                  "text": "If groundwater is above the footing base, provide a dewatering plan before excavation."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "case": "supported_total_differential",
+          "expected_publication": true,
+          "published": true,
+          "passed": true,
+          "grounding": {
+            "version": "grounding/4",
+            "status": "grounded",
+            "statements": [
+              {
+                "id": "S1",
+                "kind": "heading",
+                "section": 0,
+                "anchored": false,
+                "verdict": "structural",
+                "reasons": [],
+                "checks_applied": [],
+                "text": "Requirement"
+              },
+              {
+                "id": "S2",
+                "kind": "section",
+                "section": 0,
+                "anchored": true,
+                "verdict": "supported",
+                "reasons": [],
+                "checks_applied": [
+                  "evidence_ids",
+                  "verbatim_quotes",
+                  "inline_citations",
+                  "numbers",
+                  "number_unit_pairs",
+                  "limit_direction",
+                  "source_sentence_scope"
+                ],
+                "evidence_ids": [
+                  "E1"
+                ],
+                "quotes": [
+                  {
+                    "evidence_id": "E1",
+                    "text": "The total settlement limit is 25 mm. The differential settlement limit is 10 mm."
+                  }
+                ],
+                "text": "Total settlement is limited to 25 mm; differential settlement is limited to 10 mm. [E1]"
+              }
+            ],
+            "scope": {
+              "retrieval": "Top-ranked passages were searched in 1 of 1 documents; this is not a review of every page or every document.",
+              "precedence": "Revision precedence between documents was not verified.",
+              "approval": "Not an engineering review, code-compliance check or approval."
+            },
+            "coverage": "searchable_documents",
+            "inline_anchored": 1,
+            "checked_statements": 1
+          },
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E1",
+                  "text": "The total settlement limit is 25 mm. The differential settlement limit is 10 mm."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "case": "supported_temporary_permanent",
+          "expected_publication": true,
+          "published": true,
+          "passed": true,
+          "grounding": {
+            "version": "grounding/4",
+            "status": "grounded",
+            "statements": [
+              {
+                "id": "S1",
+                "kind": "heading",
+                "section": 0,
+                "anchored": false,
+                "verdict": "structural",
+                "reasons": [],
+                "checks_applied": [],
+                "text": "Requirement"
+              },
+              {
+                "id": "S2",
+                "kind": "section",
+                "section": 0,
+                "anchored": true,
+                "verdict": "supported",
+                "reasons": [],
+                "checks_applied": [
+                  "evidence_ids",
+                  "verbatim_quotes",
+                  "inline_citations",
+                  "source_sentence_scope"
+                ],
+                "evidence_ids": [
+                  "E1"
+                ],
+                "quotes": [
+                  {
+                    "evidence_id": "E1",
+                    "text": "Temporary supports must remain until the permanent works reach the specified strength."
+                  }
+                ],
+                "text": "Temporary supports must remain until the permanent works reach the specified strength. [E1]"
+              }
+            ],
+            "scope": {
+              "retrieval": "Top-ranked passages were searched in 1 of 1 documents; this is not a review of every page or every document.",
+              "precedence": "Revision precedence between documents was not verified.",
+              "approval": "Not an engineering review, code-compliance check or approval."
+            },
+            "coverage": "searchable_documents",
+            "inline_anchored": 1,
+            "checked_statements": 1
+          },
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E1",
+                  "text": "Temporary supports must remain until the permanent works reach the specified strength."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "case": "supported_source_conflict",
+          "expected_publication": true,
+          "published": true,
+          "passed": true,
+          "grounding": {
+            "version": "grounding/4",
+            "status": "grounded",
+            "statements": [
+              {
+                "id": "S1",
+                "kind": "heading",
+                "section": 0,
+                "anchored": false,
+                "verdict": "structural",
+                "reasons": [],
+                "checks_applied": [],
+                "text": "Requirement"
+              },
+              {
+                "id": "S2",
+                "kind": "section",
+                "section": 0,
+                "anchored": true,
+                "verdict": "supported",
+                "reasons": [],
+                "checks_applied": [
+                  "evidence_ids",
+                  "verbatim_quotes",
+                  "inline_citations",
+                  "numbers",
+                  "number_unit_pairs",
+                  "limit_direction",
+                  "source_sentence_scope"
+                ],
+                "evidence_ids": [
+                  "E1"
+                ],
+                "quotes": [
+                  {
+                    "evidence_id": "E1",
+                    "text": "Source A limits settlement to 2 inches. Source B limits settlement to 1 inch. No precedence is established."
+                  }
+                ],
+                "text": "The sources conflict: Source A limits settlement to 2 inches and Source B to 1 inch; their precedence is not established. [E1]"
+              }
+            ],
+            "scope": {
+              "retrieval": "Top-ranked passages were searched in 1 of 1 documents; this is not a review of every page or every document.",
+              "precedence": "Revision precedence between documents was not verified.",
+              "approval": "Not an engineering review, code-compliance check or approval."
+            },
+            "coverage": "searchable_documents",
+            "inline_anchored": 1,
+            "checked_statements": 1
+          },
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E1",
+                  "text": "Source A limits settlement to 2 inches. Source B limits settlement to 1 inch. No precedence is established."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "case": "supported_no_approval",
+          "expected_publication": true,
+          "published": true,
+          "passed": true,
+          "grounding": {
+            "version": "grounding/4",
+            "status": "grounded",
+            "statements": [
+              {
+                "id": "S1",
+                "kind": "heading",
+                "section": 0,
+                "anchored": false,
+                "verdict": "structural",
+                "reasons": [],
+                "checks_applied": [],
+                "text": "Requirement"
+              },
+              {
+                "id": "S2",
+                "kind": "section",
+                "section": 0,
+                "anchored": true,
+                "verdict": "supported",
+                "reasons": [],
+                "checks_applied": [
+                  "evidence_ids",
+                  "verbatim_quotes",
+                  "inline_citations",
+                  "source_sentence_scope"
+                ],
+                "evidence_ids": [
+                  "E1"
+                ],
+                "quotes": [
+                  {
+                    "evidence_id": "E1",
+                    "text": "The design has been submitted for review. No approval has been issued."
+                  }
+                ],
+                "text": "The design is submitted for review but has not been approved. [E1]"
+              }
+            ],
+            "scope": {
+              "retrieval": "Top-ranked passages were searched in 1 of 1 documents; this is not a review of every page or every document.",
+              "precedence": "Revision precedence between documents was not verified.",
+              "approval": "Not an engineering review, code-compliance check or approval."
+            },
+            "coverage": "searchable_documents",
+            "inline_anchored": 1,
+            "checked_statements": 1
+          },
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E1",
+                  "text": "The design has been submitted for review. No approval has been issued."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "case": "swapped_quantity_units",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "grounding": {
+            "version": "grounding/4",
+            "status": "withheld",
+            "draft_withheld": true,
+            "reason_code": "statements_unconfirmed",
+            "statements": [
+              {
+                "id": "S1",
+                "kind": "heading",
+                "section": 0,
+                "anchored": false,
+                "verdict": "structural",
+                "reasons": [],
+                "checks_applied": []
+              },
+              {
+                "id": "S2",
+                "kind": "section",
+                "section": 0,
+                "anchored": true,
+                "verdict": "unsupported",
+                "reasons": [],
+                "checks_applied": []
+              }
+            ],
+            "scope": {
+              "retrieval": "Top-ranked passages were searched in 1 of 1 documents; this is not a review of every page or every document.",
+              "precedence": "Revision precedence between documents was not verified.",
+              "approval": "Not an engineering review, code-compliance check or approval."
+            }
+          },
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": []
+            }
+          ]
+        },
+        {
+          "case": "differential_total_swap",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "grounding": {
+            "version": "grounding/4",
+            "status": "withheld",
+            "draft_withheld": true,
+            "reason_code": "statements_unconfirmed",
+            "statements": [
+              {
+                "id": "S1",
+                "kind": "heading",
+                "section": 0,
+                "anchored": false,
+                "verdict": "structural",
+                "reasons": [],
+                "checks_applied": []
+              },
+              {
+                "id": "S2",
+                "kind": "section",
+                "section": 0,
+                "anchored": true,
+                "verdict": "unsupported",
+                "reasons": [],
+                "checks_applied": []
+              }
+            ],
+            "scope": {
+              "retrieval": "Top-ranked passages were searched in 1 of 1 documents; this is not a review of every page or every document.",
+              "precedence": "Revision precedence between documents was not verified.",
+              "approval": "Not an engineering review, code-compliance check or approval."
+            }
+          },
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": []
+            }
+          ]
+        },
+        {
+          "case": "temporary_permanent_swap",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "grounding": {
+            "version": "grounding/4",
+            "status": "withheld",
+            "draft_withheld": true,
+            "reason_code": "statements_unconfirmed",
+            "statements": [
+              {
+                "id": "S1",
+                "kind": "heading",
+                "section": 0,
+                "anchored": false,
+                "verdict": "structural",
+                "reasons": [],
+                "checks_applied": []
+              },
+              {
+                "id": "S2",
+                "kind": "section",
+                "section": 0,
+                "anchored": true,
+                "verdict": "unsupported",
+                "reasons": [],
+                "checks_applied": []
+              }
+            ],
+            "scope": {
+              "retrieval": "Top-ranked passages were searched in 1 of 1 documents; this is not a review of every page or every document.",
+              "precedence": "Revision precedence between documents was not verified.",
+              "approval": "Not an engineering review, code-compliance check or approval."
+            }
+          },
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": []
+            }
+          ]
+        },
+        {
+          "case": "condition_removed",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "grounding": {
+            "version": "grounding/4",
+            "status": "withheld",
+            "draft_withheld": true,
+            "reason_code": "statements_unconfirmed",
+            "statements": [
+              {
+                "id": "S1",
+                "kind": "heading",
+                "section": 0,
+                "anchored": false,
+                "verdict": "structural",
+                "reasons": [],
+                "checks_applied": []
+              },
+              {
+                "id": "S2",
+                "kind": "section",
+                "section": 0,
+                "anchored": true,
+                "verdict": "unsupported",
+                "reasons": [],
+                "checks_applied": []
+              }
+            ],
+            "scope": {
+              "retrieval": "Top-ranked passages were searched in 1 of 1 documents; this is not a review of every page or every document.",
+              "precedence": "Revision precedence between documents was not verified.",
+              "approval": "Not an engineering review, code-compliance check or approval."
+            }
+          },
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": []
+            }
+          ]
+        },
+        {
+          "case": "unit_conversion_not_authorized",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "grounding": {
+            "version": "grounding/4",
+            "status": "withheld",
+            "draft_withheld": true,
+            "reason_code": "statements_unconfirmed",
+            "statements": [
+              {
+                "id": "S1",
+                "kind": "heading",
+                "section": 0,
+                "anchored": false,
+                "verdict": "structural",
+                "reasons": [],
+                "checks_applied": []
+              },
+              {
+                "id": "S2",
+                "kind": "section",
+                "section": 0,
+                "anchored": true,
+                "verdict": "unsupported",
+                "reasons": [],
+                "checks_applied": []
+              }
+            ],
+            "scope": {
+              "retrieval": "Top-ranked passages were searched in 1 of 1 documents; this is not a review of every page or every document.",
+              "precedence": "Revision precedence between documents was not verified.",
+              "approval": "Not an engineering review, code-compliance check or approval."
+            }
+          },
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "schema": "mcdxkit.grounding-benchmark/1",
+      "created": "2026-10-15T16:32:18.241648+00:00",
+      "model": "cohere/north-mini-code:free",
+      "agent_version": "knowledge/9",
+      "grounding_version": "grounding/5",
+      "fixture_sha256": "dfec79594debb3c59bbeed94fee116425c92c0cf0734788d96cebbb91f9506e2",
+      "protocol": "isolated questions",
+      "batch_size": 1,
+      "acceptance": "All supported cases published; zero unsupported cases published. Errors and missing results fail.",
+      "limits": "Synthetic fixture benchmark, not a guarantee of factual accuracy or engineering approval.",
+      "passed": true,
+      "total": 24,
+      "supported_published": 10,
+      "supported_total": 10,
+      "unsafe_publications": 0,
+      "errors": 0,
+      "cases": [
+        {
+          "case": "supported_with_conditions",
+          "expected_publication": true,
+          "published": true,
+          "passed": true,
+          "grounding": {
+            "version": "grounding/5",
+            "status": "grounded",
+            "statements": [
+              {
+                "id": "S1",
+                "kind": "heading",
+                "section": 0,
+                "anchored": false,
+                "verdict": "structural",
+                "reasons": [],
+                "checks_applied": [],
+                "text": "Requirement"
+              },
+              {
+                "id": "S2",
+                "kind": "section",
+                "section": 0,
+                "anchored": true,
+                "verdict": "supported",
+                "reasons": [],
+                "checks_applied": [
+                  "evidence_ids",
+                  "verbatim_quotes",
+                  "inline_citations",
+                  "numbers",
+                  "number_unit_pairs",
+                  "limit_direction",
+                  "source_sentence_scope"
+                ],
+                "evidence_ids": [
+                  "E1"
+                ],
+                "quotes": [
+                  {
+                    "evidence_id": "E1",
+                    "text": "For new retaining walls, total settlement shall not exceed 2 inches over 50 years. Calculate both short-term and long-term settlement."
+                  }
+                ],
+                "text": "For new retaining walls, total settlement must not exceed 2 inches over 50 years, considering short-term and long-term settlement. [E1]"
+              }
+            ],
+            "scope": {
+              "retrieval": "Top-ranked passages were searched in 1 of 1 documents; this is not a review of every page or every document.",
+              "precedence": "Revision precedence between documents was not verified.",
+              "approval": "Not an engineering review, code-compliance check or approval."
+            },
+            "coverage": "searchable_documents",
+            "inline_anchored": 1,
+            "checked_statements": 1
+          },
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E1",
+                  "text": "For new retaining walls, total settlement shall not exceed 2 inches over 50 years. Calculate both short-term and long-term settlement."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "case": "invented_number",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "grounding": {
+            "version": "grounding/5",
+            "status": "withheld",
+            "draft_withheld": true,
+            "reason_code": "statements_unconfirmed",
+            "statements": [
+              {
+                "id": "S1",
+                "kind": "heading",
+                "section": 0,
+                "anchored": false,
+                "verdict": "structural",
+                "reasons": [],
+                "checks_applied": []
+              },
+              {
+                "id": "S2",
+                "kind": "section",
+                "section": 0,
+                "anchored": true,
+                "verdict": "unsupported",
+                "reasons": [],
+                "checks_applied": []
+              }
+            ],
+            "scope": {
+              "retrieval": "Top-ranked passages were searched in 1 of 1 documents; this is not a review of every page or every document.",
+              "precedence": "Revision precedence between documents was not verified.",
+              "approval": "Not an engineering review, code-compliance check or approval."
+            }
+          },
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": []
+            }
+          ]
+        },
+        {
+          "case": "wrong_unit_same_number",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "grounding": {
+            "version": "grounding/5",
+            "status": "withheld",
+            "draft_withheld": true,
+            "reason_code": "statements_unconfirmed",
+            "statements": [
+              {
+                "id": "S1",
+                "kind": "heading",
+                "section": 0,
+                "anchored": false,
+                "verdict": "structural",
+                "reasons": [],
+                "checks_applied": []
+              },
+              {
+                "id": "S2",
+                "kind": "section",
+                "section": 0,
+                "anchored": true,
+                "verdict": "unsupported",
+                "reasons": [],
+                "checks_applied": []
+              }
+            ],
+            "scope": {
+              "retrieval": "Top-ranked passages were searched in 1 of 1 documents; this is not a review of every page or every document.",
+              "precedence": "Revision precedence between documents was not verified.",
+              "approval": "Not an engineering review, code-compliance check or approval."
+            }
+          },
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": []
+            }
+          ]
+        },
+        {
+          "case": "reversed_bound",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "grounding": {
+            "version": "grounding/5",
+            "status": "withheld",
+            "draft_withheld": true,
+            "reason_code": "statements_unconfirmed",
+            "statements": [
+              {
+                "id": "S1",
+                "kind": "heading",
+                "section": 0,
+                "anchored": false,
+                "verdict": "structural",
+                "reasons": [],
+                "checks_applied": []
+              },
+              {
+                "id": "S2",
+                "kind": "section",
+                "section": 0,
+                "anchored": true,
+                "verdict": "unsupported",
+                "reasons": [],
+                "checks_applied": []
+              }
+            ],
+            "scope": {
+              "retrieval": "Top-ranked passages were searched in 1 of 1 documents; this is not a review of every page or every document.",
+              "precedence": "Revision precedence between documents was not verified.",
+              "approval": "Not an engineering review, code-compliance check or approval."
+            }
+          },
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": []
+            }
+          ]
+        },
+        {
+          "case": "wrong_scope",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "grounding": {
+            "version": "grounding/5",
+            "status": "withheld",
+            "draft_withheld": true,
+            "reason_code": "statements_unconfirmed",
+            "statements": [
+              {
+                "id": "S1",
+                "kind": "heading",
+                "section": 0,
+                "anchored": false,
+                "verdict": "structural",
+                "reasons": [],
+                "checks_applied": []
+              },
+              {
+                "id": "S2",
+                "kind": "section",
+                "section": 0,
+                "anchored": true,
+                "verdict": "unsupported",
+                "reasons": [],
+                "checks_applied": []
+              }
+            ],
+            "scope": {
+              "retrieval": "Top-ranked passages were searched in 1 of 1 documents; this is not a review of every page or every document.",
+              "precedence": "Revision precedence between documents was not verified.",
+              "approval": "Not an engineering review, code-compliance check or approval."
+            }
+          },
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": []
+            }
+          ]
+        },
+        {
+          "case": "lost_time_condition",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "grounding": {
+            "version": "grounding/5",
+            "status": "withheld",
+            "draft_withheld": true,
+            "reason_code": "statements_unconfirmed",
+            "statements": [
+              {
+                "id": "S1",
+                "kind": "heading",
+                "section": 0,
+                "anchored": false,
+                "verdict": "structural",
+                "reasons": [],
+                "checks_applied": []
+              },
+              {
+                "id": "S2",
+                "kind": "section",
+                "section": 0,
+                "anchored": true,
+                "verdict": "unsupported",
+                "reasons": [],
+                "checks_applied": []
+              }
+            ],
+            "scope": {
+              "retrieval": "Top-ranked passages were searched in 1 of 1 documents; this is not a review of every page or every document.",
+              "precedence": "Revision precedence between documents was not verified.",
+              "approval": "Not an engineering review, code-compliance check or approval."
+            }
+          },
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": []
+            }
+          ]
+        },
+        {
+          "case": "negation",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "grounding": {
+            "version": "grounding/5",
+            "status": "withheld",
+            "draft_withheld": true,
+            "reason_code": "statements_unconfirmed",
+            "statements": [
+              {
+                "id": "S1",
+                "kind": "heading",
+                "section": 0,
+                "anchored": false,
+                "verdict": "structural",
+                "reasons": [],
+                "checks_applied": []
+              },
+              {
+                "id": "S2",
+                "kind": "section",
+                "section": 0,
+                "anchored": true,
+                "verdict": "unsupported",
+                "reasons": [],
+                "checks_applied": []
+              }
+            ],
+            "scope": {
+              "retrieval": "Top-ranked passages were searched in 1 of 1 documents; this is not a review of every page or every document.",
+              "precedence": "Revision precedence between documents was not verified.",
+              "approval": "Not an engineering review, code-compliance check or approval."
+            }
+          },
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": []
+            }
+          ]
+        },
+        {
+          "case": "no_relevant_evidence",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "grounding": {
+            "version": "grounding/5",
+            "status": "withheld",
+            "draft_withheld": true,
+            "reason_code": "statements_unconfirmed",
+            "statements": [
+              {
+                "id": "S1",
+                "kind": "heading",
+                "section": 0,
+                "anchored": false,
+                "verdict": "structural",
+                "reasons": [],
+                "checks_applied": []
+              },
+              {
+                "id": "S2",
+                "kind": "section",
+                "section": 0,
+                "anchored": true,
+                "verdict": "unsupported",
+                "reasons": [],
+                "checks_applied": []
+              }
+            ],
+            "scope": {
+              "retrieval": "Top-ranked passages were searched in 1 of 1 documents; this is not a review of every page or every document.",
+              "precedence": "Revision precedence between documents was not verified.",
+              "approval": "Not an engineering review, code-compliance check or approval."
+            }
+          },
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": []
+            }
+          ]
+        },
+        {
+          "case": "invented_approval",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "grounding": {
+            "version": "grounding/5",
+            "status": "withheld",
+            "draft_withheld": true,
+            "reason_code": "statements_unconfirmed",
+            "statements": [
+              {
+                "id": "S1",
+                "kind": "heading",
+                "section": 0,
+                "anchored": false,
+                "verdict": "structural",
+                "reasons": [],
+                "checks_applied": []
+              },
+              {
+                "id": "S2",
+                "kind": "section",
+                "section": 0,
+                "anchored": true,
+                "verdict": "unsupported",
+                "reasons": [],
+                "checks_applied": []
+              }
+            ],
+            "scope": {
+              "retrieval": "Top-ranked passages were searched in 1 of 1 documents; this is not a review of every page or every document.",
+              "precedence": "Revision precedence between documents was not verified.",
+              "approval": "Not an engineering review, code-compliance check or approval."
+            }
+          },
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": []
+            }
+          ]
+        },
+        {
+          "case": "conflict_not_resolved",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "grounding": {
+            "version": "grounding/5",
+            "status": "withheld",
+            "draft_withheld": true,
+            "reason_code": "statements_unconfirmed",
+            "statements": [
+              {
+                "id": "S1",
+                "kind": "heading",
+                "section": 0,
+                "anchored": false,
+                "verdict": "structural",
+                "reasons": [],
+                "checks_applied": []
+              },
+              {
+                "id": "S2",
+                "kind": "section",
+                "section": 0,
+                "anchored": true,
+                "verdict": "unsupported",
+                "reasons": [
+                  "the source sentence that states it is about different content"
+                ],
+                "checks_applied": [
+                  "evidence_ids",
+                  "verbatim_quotes",
+                  "inline_citations",
+                  "numbers",
+                  "number_unit_pairs",
+                  "limit_direction",
+                  "source_sentence_scope"
+                ]
+              }
+            ],
+            "scope": {
+              "retrieval": "Top-ranked passages were searched in 1 of 1 documents; this is not a review of every page or every document.",
+              "precedence": "Revision precedence between documents was not verified.",
+              "approval": "Not an engineering review, code-compliance check or approval."
+            }
+          },
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E1",
+                  "text": "Source A: Settlement shall not exceed 2 inches. Source B: Settlement shall not exceed 1 inch. Neither excerpt establishes revision precedence."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "case": "supported_existing_scope",
+          "expected_publication": true,
+          "published": true,
+          "passed": true,
+          "grounding": {
+            "version": "grounding/5",
+            "status": "grounded",
+            "statements": [
+              {
+                "id": "S1",
+                "kind": "heading",
+                "section": 0,
+                "anchored": false,
+                "verdict": "structural",
+                "reasons": [],
+                "checks_applied": [],
+                "text": "Requirement"
+              },
+              {
+                "id": "S2",
+                "kind": "section",
+                "section": 0,
+                "anchored": true,
+                "verdict": "supported",
+                "reasons": [],
+                "checks_applied": [
+                  "evidence_ids",
+                  "verbatim_quotes",
+                  "inline_citations",
+                  "source_sentence_scope"
+                ],
+                "evidence_ids": [
+                  "E1"
+                ],
+                "quotes": [
+                  {
+                    "evidence_id": "E1",
+                    "text": "For existing retaining walls, assess settlement separately."
+                  }
+                ],
+                "text": "Existing retaining walls require a separate settlement assessment. [E1]"
+              }
+            ],
+            "scope": {
+              "retrieval": "Top-ranked passages were searched in 1 of 1 documents; this is not a review of every page or every document.",
+              "precedence": "Revision precedence between documents was not verified.",
+              "approval": "Not an engineering review, code-compliance check or approval."
+            },
+            "coverage": "searchable_documents",
+            "inline_anchored": 1,
+            "checked_statements": 1
+          },
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E1",
+                  "text": "For existing retaining walls, assess settlement separately."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "case": "supported_minimum",
+          "expected_publication": true,
+          "published": true,
+          "passed": true,
+          "grounding": {
+            "version": "grounding/5",
+            "status": "grounded",
+            "statements": [
+              {
+                "id": "S1",
+                "kind": "heading",
+                "section": 0,
+                "anchored": false,
+                "verdict": "structural",
+                "reasons": [],
+                "checks_applied": [],
+                "text": "Requirement"
+              },
+              {
+                "id": "S2",
+                "kind": "section",
+                "section": 0,
+                "anchored": true,
+                "verdict": "supported",
+                "reasons": [],
+                "checks_applied": [
+                  "evidence_ids",
+                  "verbatim_quotes",
+                  "inline_citations",
+                  "numbers",
+                  "number_unit_pairs",
+                  "limit_direction",
+                  "source_sentence_scope"
+                ],
+                "evidence_ids": [
+                  "E1"
+                ],
+                "quotes": [
+                  {
+                    "evidence_id": "E1",
+                    "text": "Pile embedment shall be at least 1.5 m below the bearing stratum."
+                  }
+                ],
+                "text": "Pile embedment must be at least 1.5 m below the bearing stratum. [E1]"
+              }
+            ],
+            "scope": {
+              "retrieval": "Top-ranked passages were searched in 1 of 1 documents; this is not a review of every page or every document.",
+              "precedence": "Revision precedence between documents was not verified.",
+              "approval": "Not an engineering review, code-compliance check or approval."
+            },
+            "coverage": "searchable_documents",
+            "inline_anchored": 1,
+            "checked_statements": 1
+          },
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E1",
+                  "text": "Pile embedment shall be at least 1.5 m below the bearing stratum."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "case": "supported_negation",
+          "expected_publication": true,
+          "published": true,
+          "passed": true,
+          "grounding": {
+            "version": "grounding/5",
+            "status": "grounded",
+            "statements": [
+              {
+                "id": "S1",
+                "kind": "heading",
+                "section": 0,
+                "anchored": false,
+                "verdict": "structural",
+                "reasons": [],
+                "checks_applied": [],
+                "text": "Requirement"
+              },
+              {
+                "id": "S2",
+                "kind": "section",
+                "section": 0,
+                "anchored": true,
+                "verdict": "supported",
+                "reasons": [],
+                "checks_applied": [
+                  "evidence_ids",
+                  "verbatim_quotes",
+                  "inline_citations",
+                  "source_sentence_scope"
+                ],
+                "evidence_ids": [
+                  "E1"
+                ],
+                "quotes": [
+                  {
+                    "evidence_id": "E1",
+                    "text": "Direct attachment of the concrete barrier to the retaining wall stem is not allowed."
+                  }
+                ],
+                "text": "Direct attachment of the concrete barrier to the retaining wall stem is prohibited. [E1]"
+              }
+            ],
+            "scope": {
+              "retrieval": "Top-ranked passages were searched in 1 of 1 documents; this is not a review of every page or every document.",
+              "precedence": "Revision precedence between documents was not verified.",
+              "approval": "Not an engineering review, code-compliance check or approval."
+            },
+            "coverage": "searchable_documents",
+            "inline_anchored": 1,
+            "checked_statements": 1
+          },
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E1",
+                  "text": "Direct attachment of the concrete barrier to the retaining wall stem is not allowed."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "case": "supported_paired_units",
+          "expected_publication": true,
+          "published": true,
+          "passed": true,
+          "grounding": {
+            "version": "grounding/5",
+            "status": "grounded",
+            "statements": [
+              {
+                "id": "S1",
+                "kind": "heading",
+                "section": 0,
+                "anchored": false,
+                "verdict": "structural",
+                "reasons": [],
+                "checks_applied": [],
+                "text": "Requirement"
+              },
+              {
+                "id": "S2",
+                "kind": "section",
+                "section": 0,
+                "anchored": true,
+                "verdict": "supported",
+                "reasons": [],
+                "checks_applied": [
+                  "evidence_ids",
+                  "verbatim_quotes",
+                  "inline_citations",
+                  "numbers",
+                  "number_unit_pairs",
+                  "limit_direction",
+                  "source_sentence_scope"
+                ],
+                "evidence_ids": [
+                  "E1"
+                ],
+                "quotes": [
+                  {
+                    "evidence_id": "E1",
+                    "text": "The offset is 2 feet. Settlement shall not exceed 3 inches."
+                  }
+                ],
+                "text": "The offset is 2 feet; settlement shall not exceed 3 inches. [E1]"
+              }
+            ],
+            "scope": {
+              "retrieval": "Top-ranked passages were searched in 1 of 1 documents; this is not a review of every page or every document.",
+              "precedence": "Revision precedence between documents was not verified.",
+              "approval": "Not an engineering review, code-compliance check or approval."
+            },
+            "coverage": "searchable_documents",
+            "inline_anchored": 1,
+            "checked_statements": 1
+          },
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E1",
+                  "text": "The offset is 2 feet. Settlement shall not exceed 3 inches."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "case": "supported_conditional",
+          "expected_publication": true,
+          "published": true,
+          "passed": true,
+          "grounding": {
+            "version": "grounding/5",
+            "status": "grounded",
+            "statements": [
+              {
+                "id": "S1",
+                "kind": "heading",
+                "section": 0,
+                "anchored": false,
+                "verdict": "structural",
+                "reasons": [],
+                "checks_applied": [],
+                "text": "Requirement"
+              },
+              {
+                "id": "S2",
+                "kind": "section",
+                "section": 0,
+                "anchored": true,
+                "verdict": "supported",
+                "reasons": [],
+                "checks_applied": [
+                  "evidence_ids",
+                  "verbatim_quotes",
+                  "inline_citations",
+                  "source_sentence_scope"
+                ],
+                "evidence_ids": [
+                  "E1"
+                ],
+                "quotes": [
+                  {
+                    "evidence_id": "E1",
+                    "text": "If groundwater is above the footing base, provide a dewatering plan before excavation."
+                  }
+                ],
+                "text": "When groundwater is above the footing base, a dewatering plan is required before excavation. [E1]"
+              }
+            ],
+            "scope": {
+              "retrieval": "Top-ranked passages were searched in 1 of 1 documents; this is not a review of every page or every document.",
+              "precedence": "Revision precedence between documents was not verified.",
+              "approval": "Not an engineering review, code-compliance check or approval."
+            },
+            "coverage": "searchable_documents",
+            "inline_anchored": 1,
+            "checked_statements": 1
+          },
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E1",
+                  "text": "If groundwater is above the footing base, provide a dewatering plan before excavation."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "case": "supported_total_differential",
+          "expected_publication": true,
+          "published": true,
+          "passed": true,
+          "grounding": {
+            "version": "grounding/5",
+            "status": "grounded",
+            "statements": [
+              {
+                "id": "S1",
+                "kind": "heading",
+                "section": 0,
+                "anchored": false,
+                "verdict": "structural",
+                "reasons": [],
+                "checks_applied": [],
+                "text": "Requirement"
+              },
+              {
+                "id": "S2",
+                "kind": "section",
+                "section": 0,
+                "anchored": true,
+                "verdict": "supported",
+                "reasons": [],
+                "checks_applied": [
+                  "evidence_ids",
+                  "verbatim_quotes",
+                  "inline_citations",
+                  "numbers",
+                  "number_unit_pairs",
+                  "limit_direction",
+                  "source_sentence_scope"
+                ],
+                "evidence_ids": [
+                  "E1"
+                ],
+                "quotes": [
+                  {
+                    "evidence_id": "E1",
+                    "text": "The total settlement limit is 25 mm. The differential settlement limit is 10 mm."
+                  }
+                ],
+                "text": "Total settlement is limited to 25 mm; differential settlement is limited to 10 mm. [E1]"
+              }
+            ],
+            "scope": {
+              "retrieval": "Top-ranked passages were searched in 1 of 1 documents; this is not a review of every page or every document.",
+              "precedence": "Revision precedence between documents was not verified.",
+              "approval": "Not an engineering review, code-compliance check or approval."
+            },
+            "coverage": "searchable_documents",
+            "inline_anchored": 1,
+            "checked_statements": 1
+          },
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E1",
+                  "text": "The total settlement limit is 25 mm. The differential settlement limit is 10 mm."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "case": "supported_temporary_permanent",
+          "expected_publication": true,
+          "published": true,
+          "passed": true,
+          "grounding": {
+            "version": "grounding/5",
+            "status": "grounded",
+            "statements": [
+              {
+                "id": "S1",
+                "kind": "heading",
+                "section": 0,
+                "anchored": false,
+                "verdict": "structural",
+                "reasons": [],
+                "checks_applied": [],
+                "text": "Requirement"
+              },
+              {
+                "id": "S2",
+                "kind": "section",
+                "section": 0,
+                "anchored": true,
+                "verdict": "supported",
+                "reasons": [],
+                "checks_applied": [
+                  "evidence_ids",
+                  "verbatim_quotes",
+                  "inline_citations",
+                  "source_sentence_scope"
+                ],
+                "evidence_ids": [
+                  "E1"
+                ],
+                "quotes": [
+                  {
+                    "evidence_id": "E1",
+                    "text": "Temporary supports must remain until the permanent works reach the specified strength."
+                  }
+                ],
+                "text": "Temporary supports must remain until the permanent works reach the specified strength. [E1]"
+              }
+            ],
+            "scope": {
+              "retrieval": "Top-ranked passages were searched in 1 of 1 documents; this is not a review of every page or every document.",
+              "precedence": "Revision precedence between documents was not verified.",
+              "approval": "Not an engineering review, code-compliance check or approval."
+            },
+            "coverage": "searchable_documents",
+            "inline_anchored": 1,
+            "checked_statements": 1
+          },
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E1",
+                  "text": "Temporary supports must remain until the permanent works reach the specified strength."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "case": "supported_source_conflict",
+          "expected_publication": true,
+          "published": true,
+          "passed": true,
+          "grounding": {
+            "version": "grounding/5",
+            "status": "grounded",
+            "statements": [
+              {
+                "id": "S1",
+                "kind": "heading",
+                "section": 0,
+                "anchored": false,
+                "verdict": "structural",
+                "reasons": [],
+                "checks_applied": [],
+                "text": "Requirement"
+              },
+              {
+                "id": "S2",
+                "kind": "section",
+                "section": 0,
+                "anchored": true,
+                "verdict": "supported",
+                "reasons": [],
+                "checks_applied": [
+                  "evidence_ids",
+                  "verbatim_quotes",
+                  "inline_citations",
+                  "numbers",
+                  "number_unit_pairs",
+                  "limit_direction",
+                  "source_sentence_scope"
+                ],
+                "evidence_ids": [
+                  "E1"
+                ],
+                "quotes": [
+                  {
+                    "evidence_id": "E1",
+                    "text": "Source A limits settlement to 2 inches. Source B limits settlement to 1 inch. No precedence is established."
+                  }
+                ],
+                "text": "The sources conflict: Source A limits settlement to 2 inches and Source B to 1 inch; their precedence is not established. [E1]"
+              }
+            ],
+            "scope": {
+              "retrieval": "Top-ranked passages were searched in 1 of 1 documents; this is not a review of every page or every document.",
+              "precedence": "Revision precedence between documents was not verified.",
+              "approval": "Not an engineering review, code-compliance check or approval."
+            },
+            "coverage": "searchable_documents",
+            "inline_anchored": 1,
+            "checked_statements": 1
+          },
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E1",
+                  "text": "Source A limits settlement to 2 inches. Source B limits settlement to 1 inch. No precedence is established."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "case": "supported_no_approval",
+          "expected_publication": true,
+          "published": true,
+          "passed": true,
+          "grounding": {
+            "version": "grounding/5",
+            "status": "grounded",
+            "statements": [
+              {
+                "id": "S1",
+                "kind": "heading",
+                "section": 0,
+                "anchored": false,
+                "verdict": "structural",
+                "reasons": [],
+                "checks_applied": [],
+                "text": "Requirement"
+              },
+              {
+                "id": "S2",
+                "kind": "section",
+                "section": 0,
+                "anchored": true,
+                "verdict": "supported",
+                "reasons": [],
+                "checks_applied": [
+                  "evidence_ids",
+                  "verbatim_quotes",
+                  "inline_citations",
+                  "source_sentence_scope"
+                ],
+                "evidence_ids": [
+                  "E1"
+                ],
+                "quotes": [
+                  {
+                    "evidence_id": "E1",
+                    "text": "The design has been submitted for review. No approval has been issued."
+                  }
+                ],
+                "text": "The design is submitted for review but has not been approved. [E1]"
+              }
+            ],
+            "scope": {
+              "retrieval": "Top-ranked passages were searched in 1 of 1 documents; this is not a review of every page or every document.",
+              "precedence": "Revision precedence between documents was not verified.",
+              "approval": "Not an engineering review, code-compliance check or approval."
+            },
+            "coverage": "searchable_documents",
+            "inline_anchored": 1,
+            "checked_statements": 1
+          },
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "supported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": [
+                {
+                  "evidence_id": "E1",
+                  "text": "The design has been submitted for review. No approval has been issued."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "case": "swapped_quantity_units",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "grounding": {
+            "version": "grounding/5",
+            "status": "withheld",
+            "draft_withheld": true,
+            "reason_code": "statements_unconfirmed",
+            "statements": [
+              {
+                "id": "S1",
+                "kind": "heading",
+                "section": 0,
+                "anchored": false,
+                "verdict": "structural",
+                "reasons": [],
+                "checks_applied": []
+              },
+              {
+                "id": "S2",
+                "kind": "section",
+                "section": 0,
+                "anchored": true,
+                "verdict": "unsupported",
+                "reasons": [],
+                "checks_applied": []
+              }
+            ],
+            "scope": {
+              "retrieval": "Top-ranked passages were searched in 1 of 1 documents; this is not a review of every page or every document.",
+              "precedence": "Revision precedence between documents was not verified.",
+              "approval": "Not an engineering review, code-compliance check or approval."
+            }
+          },
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": []
+            }
+          ]
+        },
+        {
+          "case": "differential_total_swap",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "grounding": {
+            "version": "grounding/5",
+            "status": "withheld",
+            "draft_withheld": true,
+            "reason_code": "statements_unconfirmed",
+            "statements": [
+              {
+                "id": "S1",
+                "kind": "heading",
+                "section": 0,
+                "anchored": false,
+                "verdict": "structural",
+                "reasons": [],
+                "checks_applied": []
+              },
+              {
+                "id": "S2",
+                "kind": "section",
+                "section": 0,
+                "anchored": true,
+                "verdict": "unsupported",
+                "reasons": [],
+                "checks_applied": []
+              }
+            ],
+            "scope": {
+              "retrieval": "Top-ranked passages were searched in 1 of 1 documents; this is not a review of every page or every document.",
+              "precedence": "Revision precedence between documents was not verified.",
+              "approval": "Not an engineering review, code-compliance check or approval."
+            }
+          },
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": []
+            }
+          ]
+        },
+        {
+          "case": "temporary_permanent_swap",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "grounding": {
+            "version": "grounding/5",
+            "status": "withheld",
+            "draft_withheld": true,
+            "reason_code": "statements_unconfirmed",
+            "statements": [
+              {
+                "id": "S1",
+                "kind": "heading",
+                "section": 0,
+                "anchored": false,
+                "verdict": "structural",
+                "reasons": [],
+                "checks_applied": []
+              },
+              {
+                "id": "S2",
+                "kind": "section",
+                "section": 0,
+                "anchored": true,
+                "verdict": "unsupported",
+                "reasons": [],
+                "checks_applied": []
+              }
+            ],
+            "scope": {
+              "retrieval": "Top-ranked passages were searched in 1 of 1 documents; this is not a review of every page or every document.",
+              "precedence": "Revision precedence between documents was not verified.",
+              "approval": "Not an engineering review, code-compliance check or approval."
+            }
+          },
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": []
+            }
+          ]
+        },
+        {
+          "case": "condition_removed",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "grounding": {
+            "version": "grounding/5",
+            "status": "withheld",
+            "draft_withheld": true,
+            "reason_code": "statements_unconfirmed",
+            "statements": [
+              {
+                "id": "S1",
+                "kind": "heading",
+                "section": 0,
+                "anchored": false,
+                "verdict": "structural",
+                "reasons": [],
+                "checks_applied": []
+              },
+              {
+                "id": "S2",
+                "kind": "section",
+                "section": 0,
+                "anchored": true,
+                "verdict": "unsupported",
+                "reasons": [],
+                "checks_applied": []
+              }
+            ],
+            "scope": {
+              "retrieval": "Top-ranked passages were searched in 1 of 1 documents; this is not a review of every page or every document.",
+              "precedence": "Revision precedence between documents was not verified.",
+              "approval": "Not an engineering review, code-compliance check or approval."
+            }
+          },
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "evidence_ids": [],
+              "quotes": []
+            }
+          ]
+        },
+        {
+          "case": "unit_conversion_not_authorized",
+          "expected_publication": false,
+          "published": false,
+          "passed": true,
+          "grounding": {
+            "version": "grounding/5",
+            "status": "withheld",
+            "draft_withheld": true,
+            "reason_code": "statements_unconfirmed",
+            "statements": [
+              {
+                "id": "S1",
+                "kind": "heading",
+                "section": 0,
+                "anchored": false,
+                "verdict": "structural",
+                "reasons": [],
+                "checks_applied": []
+              },
+              {
+                "id": "S2",
+                "kind": "section",
+                "section": 0,
+                "anchored": true,
+                "verdict": "unsupported",
+                "reasons": [],
+                "checks_applied": []
+              }
+            ],
+            "scope": {
+              "retrieval": "Top-ranked passages were searched in 1 of 1 documents; this is not a review of every page or every document.",
+              "precedence": "Revision precedence between documents was not verified.",
+              "approval": "Not an engineering review, code-compliance check or approval."
+            }
+          },
+          "verifier_checks": [
+            {
+              "id": "S2",
+              "verdict": "unsupported",
+              "evidence_ids": [
+                "E1"
+              ],
+              "quotes": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -15,6 +15,11 @@
 !src/mcdxkit/web/*.html
 !src/mcdxkit/web/*.css
 !src/mcdxkit/web/*.js
+!src/mcdxkit/web/workspace-dist/
+!src/mcdxkit/web/workspace-dist/*.html
+!src/mcdxkit/web/workspace-dist/*.js
+!src/mcdxkit/web/workspace-dist/*.css
+!src/mcdxkit/web/workspace-dist/*.txt
 !src/mcdxkit/web/fonts/
 !src/mcdxkit/web/fonts/*.ttf
 !src/mcdxkit/web/fonts/OFL.txt
@@ -22,3 +27,11 @@
 !src/mcdxkit/calcpad_bridge/
 !src/mcdxkit/calcpad_bridge/*.cs
 !src/mcdxkit/calcpad_bridge/*.csproj
+
+!src/mcdxkit/web/pdfjs/
+!src/mcdxkit/web/pdfjs/**
+
+**/.documents/
+**/.credentials.json
+**/.credentials-*
+**/.chatgpt/

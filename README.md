@@ -56,7 +56,7 @@ Use the same engine from scripts, jobs or agents. See the [SDK contract](https:/
 
 ## Current scope
 
-Supports GROUP `.gp11t`/text reports in kip/in and the fixed-head compression-pile template profile. CalcpadCE executes translated formulas; **Prime-native execution remains unverified**. Unsupported equations fail explicitly. Private engineering files stay out of the distribution. [Calculation and compatibility details](https://github.com/amaljithkuttamath/mcdxkit/blob/main/docs/calculation.md)
+Supports GROUP `.gp11t`/text reports in kip/in and compatible scalar templates: use the fixed-head preset or explicitly map detected inputs to report components. CalcpadCE executes translated formulas; **Prime-native execution remains unverified**. Unsupported equations fail explicitly. Private engineering files stay out of the distribution. [Calculation and compatibility details](https://github.com/amaljithkuttamath/mcdxkit/blob/main/docs/calculation.md)
 
 ## Contribute
 

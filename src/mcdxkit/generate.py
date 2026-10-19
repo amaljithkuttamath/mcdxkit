@@ -22,6 +22,17 @@ def case_ids(value):
     except ValueError:raise argparse.ArgumentTypeError('Use unique positive cases, e.g. 1-10 or 1,3,7') from None
 
 
+def input_map(pairs):
+    if not pairs:return None
+    mapping={}
+    for pair in pairs:
+        key,component=pair.split('=',1)
+        if not key or key in mapping or component not in mcdx.CODES:
+            raise ValueError('Use unique --map VARIABLE=COMPONENT entries (P, Vy, Vz, My, Mz)')
+        mapping[key]=component
+    return mapping
+
+
 def default_template():
     """Resolve explicit, checkout, generic user and legacy template locations."""
     if os.environ.get('MCDXKIT_TEMPLATE'):
@@ -39,8 +50,9 @@ def default_template():
 
 def main(argv=None,prog=None):
     parser=argparse.ArgumentParser(prog=prog,description=__doc__)
-    parser.add_argument('input',type=Path,help='GROUP .gp11t or text report, in kip/in units')
-    parser.add_argument('--template',type=Path,default=default_template(),help='Compatible .mcdx template; also MCDXKIT_TEMPLATE or installed private template')
+    parser.add_argument('input',type=Path,help='GROUP report, or an .mcdx template when inspecting')
+    parser.add_argument('--template',type=Path,help='Compatible .mcdx template; also MCDXKIT_TEMPLATE or installed private template')
+    parser.add_argument('--map',action='append',default=[],metavar='VARIABLE=COMPONENT',help='Map a detected template input to P, Vy, Vz, My or Mz; repeat for custom templates')
     parser.add_argument('--output',type=Path,help='New .mcdx output path (never overwritten)')
     parser.add_argument('--inspect',action='store_true',help='Inspect case selection and load envelopes without generating')
     parser.add_argument('--cases',type=case_ids,help='Explicit strength case IDs; default detects STR case names')
@@ -51,22 +63,28 @@ def main(argv=None,prog=None):
     parser.add_argument('--history',type=Path,metavar='OUTPUT_DIR',help='Inspect only: learn case naming from completed conversion audits in this output directory')
     args=parser.parse_args(argv)
     try:
-        if args.inspect:
-            history=None
-            if args.history is not None:
-                from .review.history import AuditHistory
-                if not args.history.is_dir():raise ValueError('--history must be an existing output directory')
-                history=AuditHistory(args.history)
-            print(json.dumps(engine.inspect_report(args.input,cases=args.cases,load_source=args.load_source,checks=args.checks,history=history),indent=2))
-            return 0
-        if args.history is not None:raise ValueError('--history applies to inspect only')
-        if args.output is None:raise ValueError('--output is required unless using --inspect')
+        mapping=input_map(args.map)
         overrides={}
         for assignment in args.set:
             key,value=assignment.split('=',1)
             if key in overrides:raise ValueError('Duplicate override: '+key)
             overrides[key]=float(value)
-        result=engine.convert(args.input,args.template,args.output,cases=args.cases,load_source=args.load_source,title=args.title,overrides=overrides,checks=args.checks)
+        if args.inspect:
+            if args.input.suffix.lower()=='.mcdx':
+                print(json.dumps(engine.inspect_template(args.input,input_map=mapping),indent=2))
+                return 0
+            history=None
+            if args.history is not None:
+                from .review.history import AuditHistory
+                if not args.history.is_dir():raise ValueError('--history must be an existing output directory')
+                history=AuditHistory(args.history)
+            print(json.dumps(engine.inspect_report(args.input,cases=args.cases,load_source=args.load_source,checks=args.checks,history=history,
+                                                  template=args.template,input_map=mapping,overrides=overrides),indent=2))
+            return 0
+        if args.history is not None:raise ValueError('--history applies to inspect only')
+        if args.output is None:raise ValueError('--output is required unless using --inspect')
+        result=engine.convert(args.input,args.template or default_template(),args.output,cases=args.cases,load_source=args.load_source,
+                              title=args.title,overrides=overrides,checks=args.checks,input_map=mapping)
         print(json.dumps({'output':result['output'],'audit':result['audit'],'cases':result['cases'],
                           'envelope':result['envelope'],'open_worksheet':result['open_worksheet'],
                           'calculated_worksheet':result['calculated_worksheet'],
