@@ -342,6 +342,90 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(len(history), 1)
         self.assertEqual(self.request('GET', '/api/download/' + history[0]['worksheet']['id'])[1], raw)
 
+    def test_history_rows_carry_run_context_without_paths_outside_the_output_dir(self):
+        _, first = self.upload()
+        _, second = self.upload(name='other-loads.gp11t')
+        self.assertEqual(self.request('POST', '/api/convert', {'id': first['id'], 'cases': [1]})[0], 200)
+        self.assertEqual(self.request('POST', '/api/convert',
+                                      {'id': second['id'], 'cases': [1, 7], 'overrides': {'n_z': 9},
+                                       'load_source': 'reactions'})[0], 200)
+        self.server.state.files.clear()
+        status, rows = self.request('GET', '/api/history')
+        self.assertEqual(status, 200)
+        self.assertEqual(len(rows), 2)
+        by_source = {row['source']: row for row in rows}
+        self.assertEqual(sorted(by_source), ['loads.gp11t', 'other-loads.gp11t'])
+        one, two = by_source['loads.gp11t'], by_source['other-loads.gp11t']
+        self.assertEqual((one['cases'], one['overrides'], one['load_source']), ([1], {}, 'effects'))
+        self.assertEqual((two['cases'], two['overrides'], two['load_source']), ([1, 7], {'n_z': 9}, 'reactions'))
+        self.assertEqual(two['case_names']['1'], 'STR-I')
+        self.assertEqual({row['status'] for row in rows}, {'calculated'})
+        for row in rows:
+            self.assertGreater(row['created'], 0)
+        # Names stay relative to the output directory and no absolute path is disclosed.
+        output_dir = str(self.server.state.output_dir)
+        serialized = json.dumps(rows)
+        self.assertNotIn(output_dir, serialized)
+        self.assertNotIn('..', serialized)
+        for row in rows:
+            self.assertRegex(row['output'], r'^[0-9a-f]{16}/[A-Za-z0-9_-]+\.mcdx$')
+
+    def test_history_tolerates_audits_without_recorded_context(self):
+        _, uploaded = self.upload()
+        _, converted = self.request('POST', '/api/convert', {'id': uploaded['id'], 'cases': [1]})
+        audit = next((self.root / 'results').glob('*/*.audit.json'))
+        original = json.loads(audit.read_text())
+        self.server.state.files.clear()
+        for metadata in ({k: v for k, v in original.items()
+                          if k not in ('source', 'cases', 'case_names', 'overrides', 'load_source')},
+                         {**original, 'source': '../../etc/passwd', 'cases': 'all', 'overrides': ['n_z'],
+                          'load_source': 'global', 'case_names': 'none'},
+                         {**original, 'source': '/tmp/loads.gp11t', 'cases': [1, 'two', True],
+                          'overrides': {'n_z': float('inf'), 'x' * 200: 1, 'ok': 2},
+                          'case_names': {'1': None}, 'load_source': 123}):
+            audit.write_text(json.dumps(metadata, allow_nan=True))
+            (row,) = self.request('GET', '/api/history')[1]
+            self.assertIsNone(row['load_source'])
+            self.assertEqual(row['status'], 'calculated')
+            if metadata.get('source') == '/tmp/loads.gp11t':
+                self.assertIsNone(row['source'])
+                # One unacceptable entry makes the overrides unrecorded, not a shorter list.
+                self.assertEqual((row['cases'], row['overrides'], row['case_names']), ([1], None, {}))
+            else:
+                self.assertIsNone(row['source'])
+                self.assertEqual((row['cases'], row['overrides'], row['case_names']), ([], None, {}))
+        # Files-only rows keep their context; here the calculated page is gone, not the audit.
+        audit.write_text(json.dumps(original))
+        self.assertEqual(converted['calculated_worksheet']['name'], audit.name.replace('.audit.json', '.html'))
+        audit.with_name(converted['calculated_worksheet']['name']).unlink()
+        self.server.state.files.clear()
+        (row,) = self.request('GET', '/api/history')[1]
+        self.assertEqual((row['status'], row['source'], row['cases']), ('files', 'loads.gp11t', [1]))
+
+    def test_history_survives_hostile_audit_context(self):
+        _, uploaded = self.upload()
+        self.request('POST', '/api/convert', {'id': uploaded['id'], 'cases': [1]})
+        audit = next((self.root / 'results').glob('*/*.audit.json'))
+        original = json.loads(audit.read_text())
+        # One huge integer used to overflow math.isfinite and fail the whole history.
+        audit.write_text(json.dumps({**original, 'overrides': 'HUGE'})
+                         .replace('"HUGE"', '{"n_z": 1' + '0' * 400 + ', "ok": 2}'))
+        self.server.state.files.clear()
+        status, rows = self.request('GET', '/api/history')
+        self.assertEqual(status, 200)
+        self.assertIsNone(rows[0]['overrides'])
+        for source in ('C:\\Users\\someone\\loads.gp11t', '..\\..\\loads.gp11t',
+                       'evil\u202etxt.11pg', 'loads\x00.gp11t', 'zero\u200bwidth.gp11t'):
+            audit.write_text(json.dumps({**original, 'source': source}))
+            self.server.state.files.clear()
+            self.assertIsNone(self.request('GET', '/api/history')[1][0]['source'], source)
+        audit.write_text(json.dumps({**original, 'cases': [1, 1, 0, -3, 2 ** 60, 7],
+                                     'case_names': {'1': 'STR\u202eI', '7': 'SER\nI'},
+                                     'overrides': {'n\u202ez': 1, 'n_y\n': 2, 'n_z': 3}}))
+        self.server.state.files.clear()
+        (row,) = self.request('GET', '/api/history')[1]
+        self.assertEqual((row['cases'], row['case_names'], row['overrides']), ([1, 7], {}, None))
+
     def test_standards_register_is_bound_to_actual_calculated_artifacts(self):
         _, uploaded = self.upload()
         _, converted = self.request('POST', '/api/convert', {'id': uploaded['id'], 'cases': [1, 7]})

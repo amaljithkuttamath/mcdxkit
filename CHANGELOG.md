@@ -4,6 +4,7 @@ User-visible changes to MCDXKit (formerly gdcalc). The format follows [Keep a Ch
 
 ## Unreleased
 
+- Saved outputs in the browser now distinguish repeated runs: each row shows the date and time, source report, selected cases, overrides, load basis and a Calculated / Files only / Checks failed status, with a source filter and a status filter. Context is read from each existing `.audit.json`, fields older audits never recorded are shown as not recorded, and file names stay relative to the output directory.
 - Simplify ordinary Ask: preserve requested tables, open questions and conflicts, check project citation identities, and show advisory number warnings without a second model verifier or a 40-statement cutoff. Details and audit receipts distinguish citation checks from historical model checks. Requirement extraction, human review and calculation input validation remain separate.
 
 - Return to the workspace after ChatGPT consent without rejecting the browser's top-level cross-site navigation. Retain completed stream items when ChatGPT's terminal event has an empty output array so Ask receives its answers and tool calls. API, frame, Host, Origin, session and stream-completion checks remain enforced.

@@ -152,6 +152,8 @@ Open the printed URL. Omit `--template` to select it in the browser; omit `--no-
 
 Workflow: Files → Inputs → Changes → Outputs. Each output card shows a worksheet-checks panel with failed count, governing D/C and the failing conditions. Open Report/Template/Output file to inspect content; Results shows separate fresh Calcpad calculations. The original-file view is a reconstruction, not Prime rendering. Inputs and Changes list advisory review checks as "Review: …" items to check; they are never shown as a pass or fail. Inputs greys strength cases that can never govern; they stay selected. Current UI cannot edit arbitrary equations. Saved outputs survive restart; the visible upload queue and temporary previews do not.
 
+**Saved outputs** lists each completed conversion, newest first, as one compact row: date and time, source report name, selected cases with their names, the overrides and load basis used, and a status of Calculated, Files only or Checks failed. The row expands to the full output card with checks, downloads and the file name relative to the output directory. A **Filter by source** box narrows the list by report name and a **Status** menu narrows it by status; both act on the loaded list without re-reading the output directory. Source, cases, overrides and load basis are read from the run's `.audit.json`; the date is when that audit was written, and Calculated also requires the calculated files to still be present. Outputs whose audit never recorded a field, or recorded it malformed, show "not recorded" rather than a guess.
+
 
 ## Environment variables
 

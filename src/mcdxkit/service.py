@@ -5,6 +5,7 @@ import secrets
 import tempfile
 import threading
 import shutil
+import unicodedata
 from pathlib import Path
 from . import checks, engine, inspection, standards
 from .review import runner as review_runner
@@ -61,13 +62,17 @@ class Session:
                 continue
             try:
                 metadata = engine.load_audit(audit)
+                files = self.calculated_files(output, metadata.get('calculation'))
+                summary = self.check_summary(metadata)
                 rows.append({'worksheet': self.register(output, 'worksheet'), 'audit': self.register(audit, 'audit'),
-                             'output': str(output), 'created': audit.stat().st_mtime,
+                             # Relative to the output directory: a saved row never shows a path outside it.
+                             'output': output.relative_to(self.output_dir).as_posix(),
+                             'created': audit.stat().st_mtime,
                              'envelope': metadata.get('envelope'), 'native_execution_verified': False,
                              # History stays small: the summary only. Full checks are in the
                              # convert response and the downloadable audit.
-                             'check_summary': self.check_summary(metadata),
-                             **self.calculated_files(output, metadata.get('calculation'))})
+                             'check_summary': summary,
+                             **self.context(metadata, bool(files), summary), **files})
             except (ValueError, OSError, AttributeError):
                 continue
         return rows
@@ -78,6 +83,43 @@ class Session:
         # reported as unrecorded (None) rather than re-derived or assumed to pass.
         summary = metadata.get('check_summary')
         return summary if checks.valid_summary(summary) else None
+
+    @staticmethod
+    def context(metadata, calculated, summary):
+        """Recorded context that tells repeated runs apart: source report, selected cases, overrides,
+        load basis and status. Fields older audits never wrote, or wrote malformed, are reported as
+        empty rather than guessed; nothing here is a path."""
+        def text(value, limit):
+            # Control and format (bidi, zero-width) characters could reorder or hide what a row shows.
+            if not isinstance(value, str) or not value or any(unicodedata.category(c) in ('Cc', 'Cf') for c in value):
+                return None
+            return value[:limit]
+        source = text(metadata.get('source'), 200)
+        # A recorded source is a report filename, as uploads require: no directory part on any platform.
+        if source is not None and (any(c in source for c in '/\\') or source in ('.', '..')):
+            source = None
+        raw_cases = metadata.get('cases')
+        # Case ids as conversion accepts them, and small enough to stay exact in the browser.
+        cases = list(dict.fromkeys(c for c in raw_cases if type(c) is int and 1 <= c < 2 ** 53))[:100] \
+            if isinstance(raw_cases, list) else []
+        raw_names = metadata.get('case_names')
+        names = raw_names if isinstance(raw_names, dict) else {}
+        raw_overrides = metadata.get('overrides')
+        # Conversion always records a dict (empty for none). Anything else, or any entry conversion would
+        # not have accepted, is unrecorded: showing a partial list, or "No overrides", would be a guess.
+        overrides = dict(sorted(raw_overrides.items())) if isinstance(raw_overrides, dict) and len(raw_overrides) <= 50 \
+            and all(text(k, 100) == k
+                    # A huge int would overflow math.isfinite and fail the whole history.
+                    and ((type(v) is int and abs(v) < 2 ** 53) or (type(v) is float and math.isfinite(v)))
+                    for k, v in raw_overrides.items()) else None
+        basis = metadata.get('load_source')
+        return {'source': source, 'cases': cases,
+                'case_names': {str(c): text(names.get(str(c)), 120) for c in cases
+                               if text(names.get(str(c)), 120) is not None},
+                'overrides': overrides,
+                'load_source': basis if basis in ('effects', 'reactions') else None,
+                'status': 'checks_failed' if summary and summary.get('failed') else
+                          'calculated' if calculated else 'files'}
 
     def calculated_files(self, output, calculation):
         cpd = output.with_suffix('.cpd'); rendered = output.with_suffix('.html')

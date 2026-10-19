@@ -247,7 +247,49 @@ async function inspectStandards(id,imported){
   }
   if(register.overrides.length){const overrides=el('section',undefined,'standards-section');overrides.append(el('h3','Template overrides'));for(const value of register.overrides)overrides.append(el('p',`${value.variable} = ${value.quantity} · ${state(value.review_state)} · ${value.reason||'Reason missing'}`));body.append(overrides);}
 }
-async function history(){const data=await api('/api/history');dialog('Saved outputs','OUTPUT HISTORY','Previously generated files. Open a file to inspect it or download it.');$('preview-summary').textContent='Previous conversions';$('inspector-search').hidden=true;for(const result of data)$('inspector-content').append(resultCard(result,result.worksheet.name));if(!data.length)$('inspector-content').append(el('div','No saved outputs yet.','empty'));}
+// Saved outputs. Context comes from each audit as it was written; anything an older audit
+// never recorded is shown as "not recorded" rather than guessed.
+const historyStatuses=[['all','All statuses'],['calculated','Calculated'],['files','Files only'],['checks_failed','Checks failed']];
+const statusLabels={calculated:'Calculated',files:'Files only',checks_failed:'Checks failed'};
+function historyWhen(value){if(typeof value!=='number'||!Number.isFinite(value))return 'Date not recorded';
+  const date=new Date(value*1000);return Number.isNaN(date.getTime())?'Date not recorded':date.toLocaleString(undefined,{year:'numeric',month:'short',day:'2-digit',hour:'2-digit',minute:'2-digit'});}
+function historyCases(result){const ids=Array.isArray(result.cases)?result.cases:[],names=result.case_names||{};
+  return ids.length?'Cases '+ids.map(id=>id+(names[String(id)]?' '+names[String(id)]:'')).join(', '):'Cases not recorded';}
+function historyOverrides(result){if(!result.overrides||typeof result.overrides!=='object')return 'Overrides not recorded';const entries=Object.entries(result.overrides);return entries.length?'Overrides '+entries.map(([key,value])=>`${key}=${value}`).join(', '):'No overrides';}
+function historySource(result){return result.source||'Source not recorded';}
+function historyRow(result){
+  const status=statusLabels[result.status]?result.status:'files';
+  const row=el('details',undefined,'history-row'),summary=el('summary'),line=el('div',undefined,'history-line');
+  line.append(el('b',historySource(result)),el('span',historyWhen(result.created),'history-when'),el('span',statusLabels[status],'history-status state-'+status.replace('_','-')));
+  const overrides=historyOverrides(result);
+  const meta=[historyCases(result),overrides,result.load_source?result.load_source==='reactions'?'Reactions':'Effects':'Load source not recorded'];
+  summary.append(line,el('p',meta.join(' · '),'history-meta'));
+  row.append(summary,resultCard(result,historySource(result)));return row;
+}
+async function history(){
+  const data=await api('/api/history');
+  dialog('Saved outputs','OUTPUT HISTORY','Previously generated files, newest first. Each row shows what the audit recorded for that run: source report, selected cases, overrides and status. Open a file to inspect it or download it.');
+  $('preview-summary').textContent='Previous conversions';$('inspector-search').hidden=true;
+  const controls=el('div',undefined,'history-controls'),count=el('p',undefined,'history-count'),list=el('div',undefined,'history-list');
+  const search=el('input');search.id='history-filter';search.type='search';search.placeholder='Report name…';
+  const searchLabel=el('label','Filter by source');searchLabel.htmlFor=search.id;
+  const state=el('select');state.id='history-status';
+  for(const [value,label] of historyStatuses){const option=el('option',label);option.value=value;state.append(option);}
+  const stateLabel=el('label','Status');stateLabel.htmlFor=state.id;
+  for(const [label,control] of [[searchLabel,search],[stateLabel,state]]){const field=el('div',undefined,'history-field');field.append(label,control);controls.append(field);}
+  function draw(){
+    const needle=search.value.trim().toLowerCase(),wanted=state.value;
+    const rows=data.filter(r=>(wanted==='all'||(statusLabels[r.status]?r.status:'files')===wanted)&&
+      (!needle||(r.source||'').toLowerCase().includes(needle)));
+    list.replaceChildren();
+    for(const result of rows)list.append(historyRow(result));
+    if(!data.length)list.append(el('div','No saved outputs yet.','empty'));
+    else if(!rows.length)list.append(el('div','No saved outputs match this filter.','empty'));
+    count.textContent=data.length?`${rows.length} of ${data.length} saved output${data.length===1?'':'s'}`:'';
+  }
+  search.addEventListener('input',draw);state.addEventListener('change',draw);
+  draw();$('inspector-content').append(controls,count,list);
+}
 async function importFiles(files){let added=0,failed=0,skipped=0;for(const file of files){const ext=file.name.split('.').pop().toLowerCase();if(!['gp11t','txt','mcdx'].includes(ext)){skipped++;continue;}if(items.length>=100)throw new Error('The queue is limited to 100 files. Start a new session for more.');const item={name:file.name,relativePath:file.webkitRelativePath,kind:ext==='mcdx'?'worksheet':'report'};notice('Reading '+file.name+'…');try{if(file.size>(item.kind==='report'?16:32)*1024*1024)throw new Error('File exceeds the upload size limit.');Object.assign(item,await api('/api/upload?'+new URLSearchParams({name:file.name,kind:item.kind}),file,true));if(item.inspection){item.selected=item.inspection.selected_cases;item.error=item.inspection.selection_required?(item.inspection.summary_only?'Select the load cases to include in Inputs.':item.inspection.selection_required):null;if(hasTemplate)await refresh(item);}added++;}catch(e){item.error=e.message;failed++;}items.push(item);activeItem=item;render();}if(activeItem?.id&&!compactView.matches)await inspect(activeItem.id);notice(`${added} file${added===1?'':'s'} added`+(failed?` · ${failed} failed`:'')+(skipped?` · ${skipped} unsupported files skipped`:'')+'.',failed>0);}
 for(const id of ['files','folder']){$('choose-'+(id==='files'?'files':'folder')).addEventListener('click',()=>$(id).click());$(id).addEventListener('change',e=>{const files=Array.from(e.target.files);e.target.value='';run(()=>importFiles(files));});}
 $('choose-template').addEventListener('click',()=>$('template').click());

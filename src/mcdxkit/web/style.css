@@ -165,13 +165,13 @@ main .error, main .error-text { color: #f1aaa4; }
 .check-list li.fail .check-mark { color: #f1aaa4; }
 .card .check-details { margin-top: 10px; padding-top: 0; border-top: 0; }
 .check-note { margin: 8px 0 0; color: var(--text-secondary); }
-#inspector-content > .card .check-panel { background: #f5f7fa; border-color: #dbe2ee; }
-#inspector-content > .card .check-head h4, #inspector-content > .card .check-stats dd { color: #3e516f; }
-#inspector-content > .card .check-stats dt, #inspector-content > .card .check-note, #inspector-content > .card .check-expression { color: #5b6880; }
-#inspector-content > .card .check-list li { background: #fff; color: #3e516f; }
-#inspector-content > .card .check-ratio { color: #3e516f; }
-#inspector-content > .card .check-list li.pass .check-mark { color: #2f6b40; }
-#inspector-content > .card .check-list li.fail .check-mark { color: #a3302a; }
+#inspector-content .card .check-panel { background: #f5f7fa; border-color: #dbe2ee; }
+#inspector-content .card .check-head h4, #inspector-content .card .check-stats dd { color: #3e516f; }
+#inspector-content .card .check-stats dt, #inspector-content .card .check-note, #inspector-content .card .check-expression { color: #5b6880; }
+#inspector-content .card .check-list li { background: #fff; color: #3e516f; }
+#inspector-content .card .check-ratio { color: #3e516f; }
+#inspector-content .card .check-list li.pass .check-mark { color: #2f6b40; }
+#inspector-content .card .check-list li.fail .check-mark { color: #a3302a; }
 .login { padding: 20px; border: 1px solid #424b5c; border-radius: 9px; background: #272e3b; color: #e0e6ef; }
 .login button { margin-top: 12px; }
 #inspector { position: fixed; left: 332px; right: 10px; top: 70px; bottom: 10px; width: auto; height: auto; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; border-radius: 10px; overflow: hidden; background: #fff; color: #354259; box-shadow: 0 5px 25px #0002; }
@@ -194,10 +194,26 @@ main .error, main .error-text { color: #f1aaa4; }
 #inspector-search::placeholder { color: #67758a; }
 #inspector-content { flex: 1; min-height: 0; overflow: auto; background: var(--canvas); }
 #inspector-content.worksheet-view { display: flex; flex-direction: column; overflow: hidden; }
-#inspector-content > .card { margin: 15px; background: #fff; border-color: #dbe2ee; box-shadow: none; }
-#inspector-content > .card h3 { color: #3e516f; }
-#inspector-content > .card .tag, #inspector-content > .card summary { color: #5d6f8c; }
+#inspector-content .card { margin: 15px; background: #fff; border-color: #dbe2ee; box-shadow: none; }
+#inspector-content .card h3 { color: #3e516f; }
+#inspector-content .card .tag, #inspector-content .card summary { color: #5d6f8c; }
 #inspector-content > button { margin: 12px; }
+.history-controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; padding: 15px 15px 0; }
+.history-field { flex: 1 1 150px; min-width: 0; }
+.history-field label { margin: 0 0 6px; color: #55637c; }
+.history-count { margin: 11px 15px 0; font-size: 12px; color: #5f6d84; }
+.history-list { padding: 0 15px 15px; }
+#inspector-content .history-row { margin: 12px 0 0; padding: 0; border: 1px solid #dbe2ee; border-radius: 10px; background: #fff; color: #3e516f; }
+#inspector-content .history-row > summary { padding: 12px 14px; color: #3e516f; }
+.history-line { display: inline-flex; max-width: 100%; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+.history-line > b { min-width: 0; font-weight: 500; overflow-wrap: anywhere; }
+.history-when { color: #5f6d84; font-size: 12px; font-variant-numeric: tabular-nums; }
+.history-status { padding: 2px 7px; border-radius: 4px; font-size: 12px; white-space: nowrap; }
+.history-status.state-calculated { color: #1f4d2e; background: #bfe3c9; }
+.history-status.state-checks-failed { color: #5c1a17; background: #f4bdb8; }
+.history-status.state-files { color: #3e434c; background: #d6d9df; }
+.history-meta { margin: 7px 0 0; color: #5f6d84; font: 12px/1.6 var(--font-ui); overflow-wrap: anywhere; }
+#inspector-content .history-row > .card { margin: 0; border-top: 1px solid #e3e9f2; border-radius: 0 0 10px 10px; background: #fbfcfe; }
 .source-text { white-space: pre; font: 12px/1.65 ui-monospace, monospace; padding: 12px 18px; margin: 0; background: #fff; }
 .document-toolbar { display: flex; flex-shrink: 0; align-items: center; gap: 7px; position: sticky; top: 0; z-index: 5; padding: 8px 18px; background: #f5f7fa; border-bottom: 1px solid #e0e5ed; }
 .document-toolbar button { padding: 5px 8px; border-color: transparent; background: transparent; color: #7b8aa1; font-size: 12px; }
