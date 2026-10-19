@@ -5,6 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from test_pipeline import report, template
+from test_summary_only import summary_only
 
 ROOT=Path(__file__).resolve().parents[1]
 CLI=ROOT/'scripts/generate.py'
@@ -12,6 +13,24 @@ CLI=ROOT/'scripts/generate.py'
 class CliTests(unittest.TestCase):
     def run_cli(self,*args):
         return subprocess.run([sys.executable,str(CLI),*map(str,args)],capture_output=True,text=True)
+
+    def test_summary_only_inspection_and_explicit_conversion(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder);src=root/'summary.txt';src.write_text(summary_only())
+            ref=root/'template.mcdx';template(ref);out=root/'converted.mcdx'
+            inspected=self.run_cli(src,'--inspect')
+            self.assertEqual(inspected.returncode,0,inspected.stderr)
+            data=json.loads(inspected.stdout)
+            self.assertTrue(data['summary_only']);self.assertEqual(data['selected_cases'],[])
+            rejected=self.run_cli(src,'--template',ref,'--output',out)
+            self.assertNotEqual(rejected.returncode,0)
+            self.assertIn('--cases',rejected.stderr);self.assertFalse(out.exists())
+            converted=self.run_cli(src,'--template',ref,'--output',out,'--cases','1,7')
+            self.assertEqual(converted.returncode,0,converted.stderr)
+            audit=json.loads(out.with_suffix('.audit.json').read_text())
+            self.assertEqual(audit['envelope'],{'P':140,'Vy':24,'Vz':8,'My':190,'Mz':850})
+            self.assertTrue(audit['calculation']['calculated'])
+            self.assertEqual(src.read_text(),summary_only())
 
     def test_inspect_and_generate_report_audit_then_reject_overwrite(self):
         with tempfile.TemporaryDirectory() as d:

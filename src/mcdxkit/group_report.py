@@ -21,6 +21,10 @@ def peak(case, key):
 NUMBER = r'[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[EeDd][-+]?\d+)?'
 # Line patterns use horizontal whitespace only: \s spans newlines and backtracks quadratically.
 H = r'[^\S\r\n]'
+SUMMARY_HEADING = re.compile(
+    '^' + H + r'*(?:\*+' + H + '*)?' + (H + '+').join(MARKER.split())
+    + H + r'*(?:\*+' + H + r'*)?\r?$', re.M | re.I)
+CASE_HEADING = re.compile('^' + H + '*LOAD' + H + '+CASE' + H + '*:' + H + r'*([^\r\n]*)', re.M | re.I)
 LOCAL_UNITS = (r'AXIAL *, *KIP +LAT\. *y *, *KIP +LAT\. *z *, *KIP +MOM *x *, *KIP-IN +MOM *y *, *KIP-IN +MOM *z *, *KIP-IN\b'
                .replace(' *', H + '*').replace(' +', H + '+'))
 
@@ -58,12 +62,18 @@ def _table(block, header, minimum, maximum, columns):
 
 
 def parse(text, load_source='effects'):
-    """Return case data; case names before the final summary are metadata only."""
+    """Read full reports or summary-only files, advancing to the next case marker.
+
+    Case names before the final summary are optional metadata, never a source of loads.
+    """
     if load_source not in ('effects', 'reactions'):
         raise ValueError('load_source must be effects or reactions')
-    if MARKER not in text:
+    headings = list(SUMMARY_HEADING.finditer(text))
+    if not headings:
         raise ValueError('Final GROUP summary heading was not found')
-    prefix, summary = text.rsplit(MARKER, 1)
+    last = headings[-1]
+    prefix, summary = text[:last.start()], text[last.end():]
+    summary_only = not prefix.strip(' \t\r\n\f*\ufeff')
     names = {}
     for ident, label in re.findall(r'LOAD CASE\s*:\s*(\d+)\s+CASE NAME\s*:\s*([^\r\n]+)', prefix):
         ident = int(ident); label = label.strip()
@@ -73,10 +83,16 @@ def parse(text, load_source='effects'):
     if re.search(r'LOAD COMBINATION\s*:', summary, re.I):
         raise ValueError('Separate load-combination sections are not supported; provide a case summary')
     cases = []
-    for block in re.split(r'LOAD CASE\s*:\s*', summary)[1:]:
-        head = re.match(r'(\d+)', block)
-        if head is None: raise ValueError('Malformed load case heading')
-        ident = int(head.group(1))
+    markers = list(CASE_HEADING.finditer(summary))
+    for index, marker in enumerate(markers):
+        heading = marker.group(1).strip()
+        if not re.fullmatch(r'[0-9]+', heading) or int(heading) < 1:
+            raise ValueError('Malformed load case heading')
+        ident = int(heading)
+        # Bound every table search by the next marker; rows from another case
+        # cannot complete a truncated case, even when the report has no header.
+        next_cursor = markers[index + 1].start() if index + 1 < len(markers) else len(summary)
+        block = summary[marker.end():next_cursor]
         if any(c['id'] == ident for c in cases):
             raise ValueError('Duplicate case in final summary: ' + str(ident))
         local, ids, raw_local, local_text = _table(block, r'\* PILE TOP REACTIONS, LOCAL \*', 'MINIMUM', 'MAXIMUM', 6)
@@ -100,13 +116,15 @@ def parse(text, load_source='effects'):
                       # the chosen load source, and source_rows are unparsed text.
                       'tables':{'local':local,'effects':effects}})
     if not cases: raise ValueError('No load cases in final summary')
-    return {'cases':cases,'load_source':load_source}
+    return {'cases':cases,'load_source':load_source,'summary_only':summary_only}
 
 
 def select(parsed, cases=None):
     available = {c['id']:c for c in parsed['cases']}
     if cases is None:
         if any(limit_state(c['name']) is None for c in available.values()):
+            if parsed.get('summary_only'):
+                raise ValueError('Case names are absent from this summary-only report; specify --cases explicitly')
             raise ValueError('Case classification unavailable; specify --cases explicitly')
         cases = [c['id'] for c in available.values() if limit_state(c['name']) == 'STR']
     if not cases or len(cases) != len(set(cases)) or any(i not in available for i in cases):

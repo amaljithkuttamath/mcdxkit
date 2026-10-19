@@ -17,7 +17,7 @@ from . import engine, calcpad
 from . import checks as worksheet_checks
 from .review import runner as review_runner
 
-from .generate import case_ids, default_template
+from .generate import case_ids, default_template, input_map as parse_input_map
 
 
 def digest(path):
@@ -47,6 +47,49 @@ def discover(inputs, output_dir, *, recursive=False):
             elif not path.is_dir():
                 raise ValueError(f'Unsupported report: {path.name}; use .gp11t or .txt')
     return sorted(found)
+
+
+def identity(source, source_sha256, template_sha256, settings, checks_identity):
+    """Stable job ID: the inputs, settings, review checks and the engine revision that computes them.
+
+    A new CalcpadCE revision or translator version gives a new ID, so resume never reuses an older result."""
+    value = json.dumps([source, source_sha256, template_sha256, settings, calcpad.REVISION, calcpad.TRANSLATOR_VERSION,
+                        checks_identity], sort_keys=True, allow_nan=False)
+    return hashlib.sha256(value.encode()).hexdigest()[:16]
+
+
+def schedule(jobs, run, record, workers=1):
+    """Run each job once and record each result as it finishes. Nothing is retried.
+
+    With one worker, jobs run in this process and an exception from `run` stops the schedule; callers
+    record per-job failures themselves (calculate_all relies on this to stop when its job is cancelled).
+    With several workers, `run` must be a picklable module-level function, and one job's exception
+    becomes its own failed record without stopping the others."""
+    if workers == 1:
+        for job in jobs:
+            record(run(job))
+        return
+    iterator = iter(jobs)
+    with ProcessPoolExecutor(max_workers=workers, mp_context=multiprocessing.get_context('spawn')) as pool:
+        pending = {}
+        exhausted = False
+        while pending or not exhausted:
+            while not exhausted and len(pending) < workers * 2:
+                job = next(iterator, None)
+                if job is None:
+                    exhausted = True
+                else:
+                    pending[pool.submit(run, job)] = job
+            if not pending:
+                break
+            completed, _ = wait(pending, return_when=FIRST_COMPLETED)
+            for future in completed:
+                job = pending.pop(future)
+                try:
+                    result = future.result()
+                except Exception as exc:
+                    result = {**job, 'status': 'failed', 'error': str(exc), 'native_execution_verified': False}
+                record(result)
 
 
 @contextmanager
@@ -226,7 +269,7 @@ def format_check_table(rows):
 
 
 def convert_batch(inputs, template, output_dir, *, workers=1, recursive=False, resume=False,
-                  cases=None, load_source='effects', overrides=None, checks='default', progress=None, check_rows=None):
+                  cases=None, load_source='effects', overrides=None, checks='default', progress=None, check_rows=None, input_map=None):
     """Convert files independently; append durable records and verify outputs on resume.
 
     The job identity includes the enabled review checks and their versions, so a new check
@@ -248,6 +291,7 @@ def convert_batch(inputs, template, output_dir, *, workers=1, recursive=False, r
     manifest = root / 'batch-manifest.jsonl'
     # Normalise once (tuples become lists) so identity matches the JSON saved in job.json.
     settings = json.loads(json.dumps({'cases': cases, 'load_source': load_source, 'overrides': overrides or {}, 'checks': checks}, allow_nan=False))
+    if input_map is not None:settings['input_map']=input_map
     template_hash = digest(template)
     counts = {'total': len(files), 'succeeded': 0, 'skipped': 0, 'failed': 0,
               'manifest': str(manifest), 'workers': workers, 'calculation_engine': 'CalcpadCE', 'native_execution_verified': False}
@@ -278,8 +322,7 @@ def convert_batch(inputs, template, output_dir, *, workers=1, recursive=False, r
                     if path.stat().st_size > 16 * 1024 * 1024:
                         raise ValueError('Raw report exceeds 16 MiB')
                     source_hash = digest(path)
-                    identity = json.dumps([str(path), source_hash, template_hash, settings, calcpad.REVISION, calcpad.TRANSLATOR_VERSION, plan.identity], sort_keys=True, allow_nan=False)
-                    job_id = hashlib.sha256(identity.encode()).hexdigest()[:16]
+                    job_id = identity(str(path), source_hash, template_hash, settings, plan.identity)
                     stem = re.sub(r'[^A-Za-z0-9_-]+', '-', path.stem).strip('-')[:80] or 'worksheet'
                     yield {'job_id': job_id, 'source': str(path), 'source_sha256': source_hash,
                            'template': str(template), 'template_sha256': template_hash, 'settings': settings,
@@ -288,31 +331,7 @@ def convert_batch(inputs, template, output_dir, *, workers=1, recursive=False, r
                     record({'source': str(path), 'source_sha256': None, 'status': 'failed', 'error': str(exc),
                             'native_execution_verified': False})
 
-        if workers == 1:
-            for job in jobs():
-                record(_convert_job(job))
-        else:
-            iterator = iter(jobs())
-            with ProcessPoolExecutor(max_workers=workers, mp_context=multiprocessing.get_context('spawn')) as pool:
-                pending = {}
-                exhausted = False
-                while pending or not exhausted:
-                    while not exhausted and len(pending) < workers * 2:
-                        job = next(iterator, None)
-                        if job is None:
-                            exhausted = True
-                        else:
-                            pending[pool.submit(_convert_job, job)] = job
-                    if not pending:
-                        break
-                    completed, _ = wait(pending, return_when=FIRST_COMPLETED)
-                    for future in completed:
-                        job = pending.pop(future)
-                        try:
-                            result = future.result()
-                        except Exception as exc:
-                            result = {**job, 'status': 'failed', 'error': str(exc), 'native_execution_verified': False}
-                        record(result)
+        schedule(jobs(), _convert_job, record, workers)
         table.sort(key=lambda r: tuple(str(r[c]) for c in CHECK_COLUMNS))
         if check_rows is not None:
             check_rows.extend(table)
@@ -335,6 +354,7 @@ def main(argv=None):
     parser.add_argument('--cases', type=case_ids)
     parser.add_argument('--load-source', choices=['effects', 'reactions'], default='effects')
     parser.add_argument('--set', action='append', default=[], metavar='VARIABLE=VALUE')
+    parser.add_argument('--map', action='append', default=[], metavar='VARIABLE=COMPONENT', help='Explicit template input map; repeat for each variable')
     parser.add_argument('--checks', default='default', metavar='SPEC',
                         help='Advisory review plug-ins: default, none, or a comma list such as default,my_check')
     parser.add_argument('--quiet', action='store_true', help='Suppress per-file progress on stderr')
@@ -353,7 +373,7 @@ def main(argv=None):
         summary = convert_batch(args.inputs, args.template, args.output_dir, workers=args.workers,
                                 recursive=args.recursive, resume=args.resume, cases=args.cases,
                                 load_source=args.load_source, overrides=overrides, checks=args.checks, progress=progress,
-                                check_rows=rows)
+                                check_rows=rows,input_map=parse_input_map(args.map))
         print(format_check_table(rows), file=sys.stderr)
         print('Check summary table: ' + summary['checks']['table'], file=sys.stderr, flush=True)
 
