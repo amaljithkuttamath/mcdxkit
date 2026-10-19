@@ -149,10 +149,42 @@ def scalar(definition):
     return reals[0]
 
 
-def generate(template, output, cases, source_name, title=None, overrides=None, geometry_cases=None, review_note=None):
-    template=Path(template).resolve();output=Path(output).resolve()
-    if output==template or output.exists():raise ValueError('Output must be a new file, distinct from the template')
-    if not cases or len(cases)>100:raise ValueError('Select between 1 and 100 load cases')
+def input_definitions(root):
+    """Top-level native definitions only; program locals/functions are not worksheet inputs."""
+    definitions={}
+    for region in root.findall('w:regions/w:region',NS):
+        definition=region.find('w:math/m:define',NS)
+        if definition is not None and len(definition)==2 and tag(definition[0])=='id':
+            definitions.setdefault(name(definition[0]),[]).append((region,definition))
+    return definitions
+
+
+def resolve_input_map(root, input_map=None, *, required=True):
+    definitions=input_definitions(root)
+    mapping=dict(LOADS) if input_map is None else input_map
+    if not isinstance(mapping,dict) or len(mapping)>100:
+        raise ValueError('Input map must be a dictionary of template variables to P, Vy, Vz, My or Mz')
+    if input_map is None and not all(len(definitions.get(key,[]))==1 for key in mapping):
+        mapping={}
+    if required and not mapping:
+        raise ValueError('Detect template inputs and provide an input map (--map VARIABLE=COMPONENT)')
+    for key,component in mapping.items():
+        if not isinstance(key,str) or not key or len(key)>100 or not isinstance(component,str) or component not in CODES:
+            raise ValueError('Invalid input map; use template variables and P, Vy, Vz, My or Mz')
+        if len(definitions.get(key,[]))!=1 or key.startswith('Gd'):
+            raise ValueError('Input map needs one unambiguous template definition of '+key)
+        value=float(scalar(definitions[key][0][1]).text)
+        if not math.isfinite(value):raise ValueError('Mapped template input must be finite: '+key)
+        units=[name(n) for n in definitions[key][0][1][1].iter() if tag(n)=='id']
+        force={'kip','lbf','N','kN'};length={'in','ft','m','cm','mm'}
+        correct=(len(units)==2 and sum(u in force for u in units)==1 and sum(u in length for u in units)==1
+                 if component.startswith('M') else len(units)==1 and units[0] in force)
+        if not correct:raise ValueError('Input map has incompatible or unsupported units for '+key+' -> '+component)
+    return dict(mapping)
+
+
+def prepare_template(template, geometry_cases, overrides=None, input_map=None, *, require_mapping=True):
+    """Read and validate source/template compatibility; mutate only an in-memory XML copy."""
     validate(template)
     data=read_package(template);root=read_xml(data['mathcad/worksheet.xml'])
     regions=root.find('w:regions',NS)
@@ -160,25 +192,38 @@ def generate(template, output, cases, source_name, title=None, overrides=None, g
     if root.find('.//w:regions/w:region/w:area',NS) is not None:raise ValueError('Nested areas need a custom template adapter')
     definitions={}
     for d in root.findall('.//m:define',NS):definitions.setdefault(name(d[0]),[]).append(d)
-    for key in [*LOADS,'n_z','n_y']:
+    mapped=resolve_input_map(root,input_map,required=require_mapping)
+    count_keys=['n_z','n_y'] if (input_map is None and mapped) or all(k in definitions for k in ('n_z','n_y')) else []
+    for key in [*mapped,*count_keys]:
         if len(definitions.get(key,[]))!=1:raise ValueError('Template needs one unambiguous definition of '+key)
     if any(n.startswith('Gd') for n in definitions):raise ValueError('Use a clean template without reserved Gd variables, not an already generated worksheet')
-    overrides=overrides or {}
+    overrides={} if overrides is None else overrides
+    if not isinstance(overrides,dict) or len(overrides)>50:raise ValueError('Overrides must be a dictionary of template inputs')
     for key,value in overrides.items():
-        if key in LOADS or len(definitions.get(key,[]))!=1:raise ValueError('Unknown, ambiguous, or report-controlled override: '+key)
+        if key in mapped or len(definitions.get(key,[]))!=1:raise ValueError('Unknown, ambiguous, or report-controlled override: '+key)
         if not isinstance(value,(int,float)) or not math.isfinite(value) or value<0:raise ValueError('Overrides must be finite and nonnegative')
         if key in ('n_z','n_y') and (value<1 or value!=int(value)):raise ValueError('Pile counts must be positive integers')
         scalar(definitions[key][0]).text=format(value,'.15g')
-    counts=[float(scalar(definitions[k][0]).text) for k in ('n_z','n_y')]
+    counts=[float(scalar(definitions[k][0]).text) for k in count_keys]
     if any(n<1 or not n.is_integer() for n in counts):raise ValueError('Invalid template pile counts')
-    observed=max((p for c in (geometry_cases if geometry_cases is not None else cases) for p in c['pile_ids']),default=0)
-    if observed>math.prod(counts):
+    observed=max((p for c in geometry_cases for p in c['pile_ids']),default=0)
+    if counts and observed>math.prod(counts):
         raise ValueError(f'Local summary references pile {observed}, beyond template count {int(math.prod(counts))}; review geometry and explicitly override n_z/n_y')
     presentation=data.get('mathcad/settings/presentation.xml')
     if presentation:
         page=next((e for e in read_xml(presentation).iter() if tag(e)=='pageModel'),None)
         if page is not None and (page.get('paper-code')!='Letter' or page.get('orientation')!='Portrait' or page.get('page-margin')!='48,144,48,48'):
             raise ValueError('This adapter requires Letter portrait with page-margin 48,144,48,48')
+    return data,root,regions,definitions,mapped,counts,observed
+
+
+def generate(template, output, cases, source_name, title=None, overrides=None, geometry_cases=None, review_note=None, input_map=None):
+    template=Path(template).resolve();output=Path(output).resolve()
+    if output==template or output.exists():raise ValueError('Output must be a new file, distinct from the template')
+    if not cases or len(cases)>100:raise ValueError('Select between 1 and 100 load cases')
+    data,root,regions,definitions,mapped,counts,observed=prepare_template(
+        template,geometry_cases if geometry_cases is not None else cases,overrides,input_map)
+    overrides=overrides or {}
     original=list(regions);pages=math.ceil(len(cases)/5)
     all_ids=[int(r.get('region-id')) for r in root.findall('.//w:region',NS)]
     rid=max(all_ids+[0])+1
@@ -221,17 +266,19 @@ def generate(template, output, cases, source_name, title=None, overrides=None, g
                 rhs=quantity(maximum(*map(real,pair)),'kip')
                 if key.startswith('M'):rhs=quantity(rhs,'in')
                 math_region(f'Gd{CODES[key]}{index}',rhs,y+dy,x)
-        for i,key in enumerate(['P','Vy','My','Mz']):
+        components=[key for key in CODES if key in mapped.values()]
+        for i,key in enumerate(components):
             args=[ident(f'Gd{CODES[key]}{j}') for j in range(page*5+1,page*5+len(batch)+1)]
             if page:args.insert(0,ident(f'Gd{CODES[key]}G{page}'))
             # Single-argument max is kept as an identity reference for portability.
             rhs=maximum(*args) if len(args)>1 else args[0]
-            math_region(f'Gd{CODES[key]}G{page+1}',rhs,offset+787.2+(i//2)*28.8,9.6 if i%2==0 else 374.4)
+            top=784+(i//2)*26 if len(components)==5 else 787.2+(i//2)*28.8
+            math_region(f'Gd{CODES[key]}G{page+1}',rhs,offset+top,9.6 if i%2==0 else 374.4)
     if review_note:
         # Plain text only, created last so every other region keeps its id; it sits in the gap
         # between the last case row and the envelope formulas of the last generated page.
         text_region(str(review_note)[:400],(pages-1)*864+752.0,32)
-    for key,load in LOADS.items():
+    for key,load in mapped.items():
         d=definitions[key][0];d.remove(d[1]);d.append(ident(f'Gd{CODES[load]}G{pages}'))
     for r in original:r.set('top',str(float(r.get('top'))+pages*864))
     for r in list(regions):regions.remove(r)
@@ -258,9 +305,10 @@ def generate(template, output, cases, source_name, title=None, overrides=None, g
             'template_sha256':hashlib.sha256(template.read_bytes()).hexdigest(),
             'source':source_name,'cases':[c['id'] for c in cases],'load_source':mapping,
             'envelope':envelope(cases),'overrides':overrides,'largest_observed_pile_id':observed,
-            'template_pile_count':int(math.prod(counts)),'validation':validation,
+            'template_pile_count':int(math.prod(counts)) if counts else None,'input_map':mapped,'validation':validation,
             'notes':['Separate component envelopes; not concurrent pile/case loads.',
-                     'Vy drives inherited shear checks; Vz is retained as input data.',
+                     'Report components feed the recorded template input map; unmapped template values are retained.',
+                     'Pile count checked from n_z/n_y.' if counts else 'No n_z/n_y layout pair; pile capacity was not checked.',
                      'Template geometry, materials, headers and dates are inherited unless explicitly changed.',
                      'No cached output values. Native Mathcad opening, rendering and execution are unverified.'],
             'source_cases':cases}

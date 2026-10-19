@@ -1,0 +1,16 @@
+# Keys and model settings can be entered in the browser after startup.
+# Start the prepared upstream RAGFlow stack first (deploy/ragflow.md).
+# docker compose -f compose.yaml -f compose.documents.yaml up -d --build
+services:
+  mcdxkit:
+    mem_limit: 2g
+    networks: [default, knowledge]
+    environment:
+      MCDXKIT_RAGFLOW_URL: http://ragflow-api:9380
+      MCDXKIT_RAGFLOW_EMBEDDING_MODEL: ${MCDXKIT_RAGFLOW_EMBEDDING_MODEL:-}
+      MCDXKIT_RAGFLOW_RERANK_MODEL: ${MCDXKIT_RAGFLOW_RERANK_MODEL:-}
+      MCDXKIT_OPENROUTER_MODEL: ${MCDXKIT_OPENROUTER_MODEL:-}
+networks:
+  knowledge:
+    external: true
+    name: mcdxkit-knowledge
