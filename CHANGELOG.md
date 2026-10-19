@@ -5,6 +5,53 @@ User-visible changes to MCDXKit (formerly gdcalc). The format follows [Keep a Ch
 ## Unreleased
 
 - Batch runs print a review summary line (`12 reports, 2 with items to review`, naming reports that were not checked, reports that failed to convert and reports where some checks could not run), add `review_items` and `check_error` columns to the per-report check table and CSV, and report the same counts under `review` in the stdout summary. Review items stay advisory: worksheets are unchanged and exit codes are unchanged.
+- Simplify ordinary Ask: preserve requested tables, open questions and conflicts, check project citation identities, and show advisory number warnings without a second model verifier or a 40-statement cutoff. Details and audit receipts distinguish citation checks from historical model checks. Requirement extraction, human review and calculation input validation remain separate.
+
+- Return to the workspace after ChatGPT consent without rejecting the browser's top-level cross-site navigation. Retain completed stream items when ChatGPT's terminal event has an empty output array so Ask receives its answers and tool calls. API, frame, Host, Origin, session and stream-completion checks remain enforced.
+- Preserve parenthetical applicability and approval exclusions in Ask's statement checks, even when a model reports support. Document drafts now enforce the same pinned DeepSeek provider and price caps as Ask and extraction.
+- Unified project workspace with worksheet, conversational Ask, input mapping, requirements and calculated outputs; original PDFs open in a side drawer.
+- Project-aware LangChain research with bounded RAGFlow searches, follow-up context, live activity and persisted human clarification. Suggested actions reuse explicit workflow controls.
+- Selected-page DeepSeek extraction preserves literal values, conditions and exact citations; reviewed applicability and compatible scalar bindings feed the existing engine.
+- Ask plans a main search plus condition/exception searches within a fixed budget, reuses repeated results, reads original neighbouring PDF pages for read-only answers, flags stated numbers missing from cited text, and shows a typed activity timeline (searches, pages read, saved extractions, citation check). A new question no longer briefly shows the previous failed request. Truncated original-page context is labelled and recorded as a gap.
+- Ask finishes with an answer when a research tool's budget is used instead of failing with "Research limit reached". Read-only questions no longer save requirements: saving needs the user's request, otherwise Ask offers a **Save for review** button.
+- Use your ChatGPT plan for Ask: **Continue with ChatGPT** in Services (local 127.0.0.1 servers only) signs in with OpenAI's documented OAuth flow, and the selected ChatGPT model runs every Ask step through the Responses API. OpenRouter remains selectable; no automatic provider fallback or retry.
+- The answer check accepts up to 8 distinct quotes per statement (previously 3), so compound statements are no longer withheld for needing several quotations; withheld answers record a fixed reason code (for example `invalid_verifier_response`) in the answer and its audit receipt.
+- The answer check (`grounding/5`) accepts quotes of up to 2,000 characters (previously 400), so answers resting on long engineering sentences are no longer withheld because quoting the whole sentence with its conditions exceeded the limit. New explicit size limits (6,000 quote characters per statement, 20,000 per check) bound the check's quotes; the separate output-token limit still applies. Over-limit or cut-off checks still withhold the draft; quotes are never trimmed and nothing is retried.
+- The workspace makes the two-file calculation path primary (raw report and Mathcad template → checked inputs → calculated outputs, with a next-action button and step indicator). Ask is a separate destination available from every view, even before a project or calculation exists.
+- Download an audit receipt for any saved Ask answer: model and versions, searches, pages read, each checked statement with quotes, retrieved vs cited evidence, current source-file integrity and a tamper-evident SHA-256 digest (not a signature or proof of truth). Grounding now rejects values transferred to a different scope (for example from new to existing walls), widened beyond their source qualifiers or conditions, or with a lost sign, and checks compound statements clause by clause. The receipt distinguishes a changed stored file from an answer built on an earlier file revision.
+- Ask checks every statement of a new answer against its cited passages before publishing (one extra call on the selected model plus mechanical quote, number, unit and limit checks). If any statement can't be confirmed, the draft is withheld and the retrieved passages are shown instead. This reduces, but cannot eliminate, unsupported statements.
+- New Ask answers cite evidence inline right after each supported claim (`[E3][E7]`), checked against the section's listed evidence; page references to cited pages no longer trigger the numeric check. Earlier answers are unchanged.
+- Read-only AG-UI 1.0 event stream for durable jobs (`/api/jobs/{id}/agui`) using the official `ag-ui-protocol` SDK, with Last-Event-ID replay.
+- Requirement cards, review and binding summaries show the extracted unit beside literal values such as "two (2)".
+- Durable local chat/batch workers, cancellation fencing, authenticated SSE, CLI submission/status and packaged offline frontend assets.
+
+- View the full calculated worksheet directly from document-package Outputs, with package integrity verification and a sandboxed preview.
+
+- Refresh document indexing progress automatically without resetting the open source, question or unsaved review. Stop polling on completion or connection errors and keep manual retry available.
+
+- Resume uploaded but unstarted RAGFlow documents without uploading duplicates; clear old progress when a parsing retry is accepted.
+
+- Read current RAGFlow ingestion states, requiring completed tasks with nonempty chunks before enabling answers. Bound the local Elasticsearch heap so PDF parsing can share an 8 GiB Docker VM.
+
+- Prefer free document models based on recorded synthetic tests: Cohere for answers, with two Nemotron search recommendations. Preserve existing selections and indexes; distinguish direct model tests from RAGFlow execution.
+
+- Read local `.env` document-service settings through python-dotenv, preserving process and browser overrides and keeping credentials out of Git/exports.
+
+- Use one OpenRouter key for free search embeddings and answers through RAGFlow’s native adapter; provision the bundled local service account and preserve existing index models. No Ollama runtime is required.
+
+- Detect document-service health, local runtime state and the configured default search model; reserve infrastructure fields for advanced administration.
+
+- Discover supported free OpenRouter models from the browser after entering a key, with saved-key refresh and explicit connection errors.
+
+- Document libraries can now start without calculation files: add PDFs, index, ask cited questions, then connect a validated report/template while retaining sources and answers.
+
+- Add source-backed design packages: persistent PDF evidence, RAGFlow indexing/retrieval, OpenRouter free-only drafts, explicit input review, and calculated report ZIPs through the shared CLI/browser workflow. Includes browser API-key settings with private server-side storage and pinned local deployment preparation.
+
+- Validate the template against the raw report before preview: expose mapping, unit, layout and pile-capacity problems in Inputs, refresh checks after input changes, and share preflight checks with native generation.
+
+- Discover scalar inputs from the selected Mathcad template and map them to P/Vy/Vz/My/Mz through CLI, SDK, batch and browser; preserve downstream formulas and grow source pages with the selected case count. Validate mapping dimensions and record custom mappings in audits and standards registers.
+
+- Support summary-only GROUP inputs explicitly, read bounded case markers, and guide case selection when header names are absent.
 
 ## 0.4.0
 

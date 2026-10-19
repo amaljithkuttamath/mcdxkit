@@ -161,6 +161,10 @@ class Session:
 
     def operation(self, route, data):
         state = self
+        if route == '/api/template-inputs':
+            template=state.get(data['template_id'],['template'])['path'] if data.get('template_id') else state.template
+            if template is None:raise RequestError('Select a Mathcad template first.')
+            return engine.inspect_template(template,input_map=data.get('input_map'))
         if route == '/api/standards':
             output = self.get(data.get('id'), ['worksheet'])['path']
             audit_path = output.with_suffix('.audit.json')
@@ -206,7 +210,11 @@ class Session:
         cases = self.cases(data.get('cases'))
         basis = self.basis(data)
         if route == '/api/inspect':
-            return self.inspect(entry['path'], cases, basis)
+            found=self.inspect(entry['path'], cases, basis)
+            template=state.get(data['template_id'],['template'])['path'] if data.get('template_id') else state.template
+            if template is not None:
+                found.update(inspection.template_report(template,found,data.get('input_map'),data.get('overrides')))
+            return found
         template = state.get(data['template_id'], ['template'])['path'] if data.get('template_id') else state.template
         if template is None or not template.is_file():
             raise RequestError('Select a compatible .mcdx template before converting.')
@@ -233,7 +241,7 @@ class Session:
             shutil.copyfile(entry['path'], snapshot_report)
             shutil.copyfile(template, snapshot_template)
             result = engine.convert(snapshot_report, snapshot_template, output, cases=cases,
-                                    load_source=basis, title=title, overrides=overrides, checks=self.plan)
+                                    load_source=basis, title=title, overrides=overrides, checks=self.plan,input_map=data.get('input_map'))
             changes = inspection.diff(snapshot_template, output)
         except Exception:
             shutil.rmtree(folder)
@@ -244,7 +252,7 @@ class Session:
             state.conversions += 1
         return {'worksheet': state.register(output, 'worksheet'),
                 'audit': state.register(output.with_suffix('.audit.json'), 'audit'),
-                'output': str(output), 'envelope': result['envelope'], 'cases': result['cases'],
+                'output': str(output), 'envelope': result['envelope'], 'cases': result['cases'], 'input_map':result['input_map'],
                 'validation': result['validation'], 'native_execution_verified': False,
                 'preview': preview, 'diff': changes, 'review_checks': result['review_checks'],
                 'checks': result['checks'], 'check_summary': result['check_summary'],

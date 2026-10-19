@@ -44,9 +44,13 @@ def main(argv=None):
                              ('batch','Convert files or folders with parallel workers and resume'),
                              ('checks','List advisory review checks: built-in and installed plug-ins'),
                              ('summary','Write a CSV of per-case loads for several reports or output directories'),
+                             ('documents','Create source-backed design reports and calculation packages'),
                              ('standards','Create or inspect a versioned engineering provenance register')]:
         sub.add_parser(name,help=description,add_help=False)
     selected,rest=parser.parse_known_args(args)
+    if selected.command=='documents':
+        from .document_cli import main as documents
+        return documents(rest)
     if selected.command=='standards':
         from .standards import main as standards
         return standards(rest)
