@@ -4,6 +4,7 @@ User-visible changes to MCDXKit (formerly gdcalc). The format follows [Keep a Ch
 
 ## Unreleased
 
+- Browser review decisions on the Inputs step: one card per flagged case that could change the envelope or selection, with **Show in report**, **Add case N to envelope** and **Keep as is…**, Undo, "governs …" captions and a "What was checked" disclosure. Decisions go to `/api/preview` and `/api/convert` as `review_decisions` and are recorded in the audit and worksheet note; Changes and Outputs show what is not reviewed yet. Report uploads return `source_sha256`, and `/api/preview` and `/api/convert` accept request bodies up to 2 MiB so a full set of decisions with notes fits. A decision's `rule` must be a check id and its `component` at most 64 characters. Nothing changes without a decision.
 - Simplify ordinary Ask: preserve requested tables, open questions and conflicts, check project citation identities, and show advisory number warnings without a second model verifier or a 40-statement cutoff. Details and audit receipts distinguish citation checks from historical model checks. Requirement extraction, human review and calculation input validation remain separate.
 
 - Return to the workspace after ChatGPT consent without rejecting the browser's top-level cross-site navigation. Retain completed stream items when ChatGPT's terminal event has an empty output array so Ask receives its answers and tool calls. API, frame, Host, Origin, session and stream-completion checks remain enforced.
@@ -61,7 +62,7 @@ User-visible changes to MCDXKit (formerly gdcalc). The format follows [Keep a Ch
 
 ### Added
 
-- Advisory review checks in a new `mcdxkit.review` plug-in package: service axial load above strength, effects below the pile top, duplicate cases, ratio outliers and possible unit slips, plus governing and "never governs" case annotations and offline case-name suggestions. Results appear in `inspect`, the audit (`review_checks`, with each check's id, version and thresholds), batch manifests and the browser. Checks never change inputs, case selection or outputs; with no review decisions the `.mcdx`, `.cpd` and `.html` are byte-identical with checks on or off. A crashing or slow check is recorded and never fails a conversion.
+- Advisory review checks in a new `mcdxkit.review` plug-in package: service axial load above strength, effects below the pile top, duplicate cases, ratio outliers and possible unit slips, plus governing and "never governs" case annotations and offline case-name suggestions. Results appear in `inspect`, the audit (`review_checks`, with each check's id, version and thresholds), batch manifests and the browser. Checks never change inputs, case selection or outputs; with no review decisions the worksheet content of the `.mcdx`, `.cpd` and `.html` is identical with checks on or off (only the `.mcdx` zip timestamps follow the wall clock). A crashing or slow check is recorded and never fails a conversion.
 - `--checks default|none|id,...` on `inspect`, `convert` and `batch`, `MCDXKIT_CHECKS` for the server, and `mcdxkit checks list`. Installed third-party checks (entry-point group `mcdxkit.review`) stay off unless named.
 - Browser-only generation progress and a persistent template shortcut, with clearer sidebar steps and mobile preview navigation.
 

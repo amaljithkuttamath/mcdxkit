@@ -366,8 +366,10 @@ def create_app(*, origin, template=None, output_dir='mcdxkit-output', access_tok
         if operation not in ('inspect', 'convert', 'validate', 'preview', 'view', 'diff', 'summary', 'standards', 'template-inputs'):
             raise RequestError('Not found.', 404)
         try:
-            # A summary lists up to 100 report IDs with their selected cases.
-            data = json.loads(await read_body(request, 1048576 if operation == 'standards' else 65536 if operation == 'summary' else 16384, 'application/json'))
+            # A summary lists up to 100 report IDs with their selected cases. A preview or conversion may carry
+            # up to 500 review decisions, each with a note of up to 500 characters.
+            limit = {'standards': 1048576, 'preview': 2097152, 'convert': 2097152, 'summary': 65536}.get(operation, 16384)
+            data = json.loads(await read_body(request, limit, 'application/json'))
         except (ValueError, UnicodeError, RecursionError):
             raise RequestError('Expected a JSON object.')
         if not isinstance(data, dict):

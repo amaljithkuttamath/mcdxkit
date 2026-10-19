@@ -1,4 +1,5 @@
 """Transport-independent browser session and conversion operations."""
+import hashlib
 import math
 import re
 import secrets
@@ -112,6 +113,9 @@ class Session:
             folder.rmdir()
             raise
         result = state.register(path, kind)
+        if kind == 'report':
+            # The browser remembers review decisions per report content, not per upload.
+            result['source_sha256'] = hashlib.sha256(raw).hexdigest()
         state.upload_count += 1
         state.upload_bytes += len(raw)
         return {**result, **details}
@@ -172,7 +176,6 @@ class Session:
                 raise RequestError('Generate outputs first; this worksheet has no calculation audit.')
             audit = standards.read_json(audit_path)
             # Inspect only artifacts adjacent to the selected session worksheet, never saved paths.
-            import hashlib
             for path, expected in ((output, audit.get('sha256')),
                                    (output.with_suffix('.html'), audit.get('calculation', {}).get('html_sha256'))):
                 if path.is_symlink() or not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest() != expected:
@@ -224,6 +227,8 @@ class Session:
             for k, v in overrides.items()
         ):
             raise RequestError('Overrides must be finite numeric template inputs.')
+        # Engineer decisions on review flags; engine.convert validates them before writing anything.
+        decisions = data.get('review_decisions')
         title = data.get('title')
         if title is not None and (not isinstance(title, str) or len(title) > 160):
             raise RequestError('Title must contain at most 160 characters.')
@@ -241,7 +246,8 @@ class Session:
             shutil.copyfile(entry['path'], snapshot_report)
             shutil.copyfile(template, snapshot_template)
             result = engine.convert(snapshot_report, snapshot_template, output, cases=cases,
-                                    load_source=basis, title=title, overrides=overrides, checks=self.plan,input_map=data.get('input_map'))
+                                    load_source=basis, title=title, overrides=overrides, checks=self.plan,
+                                    review_decisions=decisions, input_map=data.get('input_map'))
             changes = inspection.diff(snapshot_template, output)
         except Exception:
             shutil.rmtree(folder)

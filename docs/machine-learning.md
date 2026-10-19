@@ -21,7 +21,7 @@ GROUP case names drive the default selection: names starting with `STR` are stre
 
 **Advisory only, never applied without your click.** Review checks, case-name suggestions and dominance hints never change inputs, case selection, overrides, worksheets or results. The only way a suggestion changes anything is the explicit **Use cases …** button. Tests check that the `.mcdx`, `.cpd` and `.html` bytes and the audit (apart from `review_checks`) are identical with `checks='default'` and `checks='none'`.
 
-`inspect` (CLI, SDK and browser), `convert` and batch audits return a `review_checks` block (schema `review-checks/1`) from the `mcdxkit.review` package. It replaces the earlier `review_flags` key, which in turn replaced the magnitude-based `anomalies` a planted-error validation found misleading (below). The browser shows flags on the Inputs and Changes steps as "Review: …" items. A flag means "check the GROUP input for this case"; it is never a pass or fail, and no flag is not a verification.
+`inspect` (CLI, SDK and browser), `convert` and batch audits return a `review_checks` block (schema `review-checks/1`) from the `mcdxkit.review` package. It replaces the earlier `review_flags` key, which in turn replaced the magnitude-based `anomalies` a planted-error validation found misleading (below). The browser shows flags that could change the envelope or selection as review cards on the Inputs step, where the engineer can add the case, keep it as is or leave it; other results are listed under "What was checked" (see the [CLI and server guide](cli.md#start-and-stop-the-browser)). A flag means "check the GROUP input for this case"; it is never a pass or fail, and no flag is not a verification.
 
 ```json
 "review_checks": {
@@ -95,7 +95,7 @@ Each rule is a physical or labelling invariant. The only tolerance is 1% for rou
 
 ### Case dominance
 
-The `dominance` annotation lists strength cases that can never govern: another considered case is at least as large in every envelope component (P, Vy, Vz, My, Mz). In the harder corpus 51% of strength cases were dominated (median 6 strength cases per report). The browser greys them in the case list and names them under the governing cases. They stay selected; it is a hint about where to look, not a selection.
+The `dominance` annotation lists strength cases that can never govern: another considered case is at least as large in every envelope component (P, Vy, Vz, My, Mz). In the harder corpus 51% of strength cases were dominated (median 6 strength cases per report). The browser captions each selected case with the peaks it governs ("governs no peak" for these) and names them under the governing cases; rows are never dimmed. They stay selected; it is a hint about where to look, not a selection.
 
 `basis` is `selected` when a case selection is in use (inspect with a resolved selection, and every conversion audit). When no selection is resolved, inspect uses `fallback_non_extreme`: all cases except names starting with `ext`, `extreme`, `eq` or `seis`. This fallback applies only to the dominance hint. It is labelled as a fallback in the API, audit and UI, and is never used as, or shown as, a case selection; `select` still fails explicitly with "Case classification unavailable". In the study, this basis overshot the true strength envelope by a median of 0% (90th percentile 71%), against 24% (400%) for all cases.
 

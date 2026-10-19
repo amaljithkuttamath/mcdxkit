@@ -119,7 +119,7 @@ main small, main .small { color: #92969f; }
 .card details { margin-top: 17px; padding-top: 13px; border-top: 1px solid #414650; }
 .card summary { color: #a2aaba; font-size: 12px; font-weight: 450; }
 .case-caption { margin: 12px 0 8px; font-size: 12px; color: #949eb1; }
-.cases { display: grid; gap: 3px; max-height: 180px; overflow: auto; }
+.cases { display: grid; gap: 3px; max-height: 300px; overflow: auto; }
 .case-label { display: flex; align-items: center; gap: 7px; margin: 0; padding: 6px; color: #a4b0c5; font-size: 12px; border-radius: 4px; }
 .case-label:has(input:checked) { background: #3a404c; color: #d0d7e4; }
 .case-label input { accent-color: #c1c9da; margin: 0; }
@@ -301,7 +301,6 @@ main .case-caption, .queue-heading, .template-panel > p { color: var(--text-seco
 }
 .advice { margin-top: 16px; padding: 14px; border: 1px solid #3d414b; border-radius: 6px; }
 .advice h4 { margin: 0 0 6px; color: #d9dfe9; font: 500 12px/1.6 var(--font-ui); }
-.review-flags { border-color: #5c5232; }
 .advice-list { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 9px; }
 .advice-list li { display: grid; grid-template-columns: auto 1fr; column-gap: 9px; row-gap: 2px; align-items: baseline; font-size: 12px; }
 .advice-list li small { grid-column: 2; margin: 0; }
@@ -310,14 +309,40 @@ main .case-caption, .queue-heading, .template-panel > p { color: var(--text-seco
 .advice-tag.service { background: #3f3f52; color: #dad9f0; }
 .advice-tag.extreme { background: #4a3a2a; color: #f2dcc4; }
 .advice-tag.unknown { background: #4a2f33; color: #f4d3d6; }
-.advice-tag.review { background: #574a26; color: #f6e7bd; }
-@media (max-width: 560px) {
-  .review-flags .advice-list li { grid-template-columns: 1fr; }
-  .review-flags .advice-list li small { grid-column: 1; }
-  .review-flags .advice-tag { justify-self: start; }
-}
-.case-label.dominated { color: var(--muted); }
 .dominance-note { margin: 8px 0 0; color: var(--muted); }
+/* Input review checks: advisory, never red, never colour alone. Rows are never dimmed. */
+.case-text { display: flex; flex-direction: column; flex: 1; min-width: 0; overflow-wrap: anywhere; }
+main .case-governs { color: #aeb4bf; font-size: 12px; line-height: 1.4; }
+.case-label.flagged { box-shadow: inset 3px 0 0 #e3b863; padding-left: 10px; }
+.review-tag { flex: none; padding: 1px 7px; border-radius: 9px; background: #e3b863; color: #2a2210; font: 600 11px/1.6 var(--font-ui); white-space: nowrap; }
+.review-checks { margin-top: 14px; }
+.review-card { margin-top: 12px; padding: 14px; border: 1px solid #484d58; border-left: 3px solid #e3b863; border-radius: 6px; }
+.review-card.reviewed { padding: 6px 12px; border-left-color: #484d58; }
+.review-title { margin: 0 0 6px; color: #e6ebf3; font: 500 13px/1.5 var(--font-ui); }
+.review-numbers, .review-impact, .review-pending-line { margin: 0 0 6px; color: #c9cfda; font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
+.review-impact { color: #e6ebf3; }
+.review-actions { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
+.review-actions button { flex: 1 1 auto; min-width: 0; padding: 8px 10px; font-size: 12px; white-space: normal; }
+.review-actions .quiet { flex: 0 0 auto; }
+.review-keep { margin-top: 12px; padding-top: 12px; border-top: 1px solid #414650; }
+.review-keep label { display: block; margin-bottom: 4px; color: #c9cfda; font-size: 12px; }
+.review-keep textarea { min-height: 44px; background: #202631; color: #d6dfee; border-color: #465064; font-family: var(--font-ui); }
+main .review-footer { margin: 10px 0 0; color: #aeb4bf; font-size: 12px; }
+.review-done { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin: 0; color: #d0d7e4; font-size: 12px; overflow-wrap: anywhere; }
+main .review-clean, main .load-caption { margin: 14px 0 0; color: #aeb4bf; font-size: 12px; }
+main .load-caption { margin: 0 0 2px; }
+.card .review-checked { margin-top: 12px; padding-top: 0; border-top: 0; }
+.review-checked ul { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 8px; }
+.review-checked li { display: grid; gap: 2px; color: #c9cfda; font-size: 12px; }
+.review-checked b { font-weight: 500; }
+.card .review-more { margin-top: 12px; padding-top: 0; border-top: 0; }
+.review-chip { display: inline-block; margin: 8px 0 0; padding: 2px 10px; border: 1px solid #4a4f5a; border-radius: 12px; color: #d0d7e4; font-size: 12px; }
+#inspector-content > .card .review-chip { border-color: #dbe2ee; color: #3e516f; }
+.review-pending { margin-top: 12px; }
+main .review-error-note { margin: 8px 0 0; color: #c9cfda; font-size: 12px; overflow-wrap: anywhere; }
+#inspector-content > .card .review-error-note { color: #3e516f; }
+.source-text.source-focus { border-top: 2px solid #e3b863; background: #fffaf0; }
+.source-text.source-focus:focus { outline: 2px solid #365d9f; outline-offset: -2px; }
 
 /* Shared workflow context stays available beside every document view. */
 .workflow-position { margin: 0 0 12px; color: #b8c3d1; font-size: 12px; }

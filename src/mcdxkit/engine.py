@@ -10,6 +10,7 @@ from datetime import datetime
 from pathlib import Path
 from . import group_report, mcdx, calcpad
 from . import checks as worksheet_checks
+from .review import registry as review_registry
 from .review import runner as review_runner
 
 
@@ -90,6 +91,9 @@ def _decisions(block, decisions):
                 or not (item['case'] is None or (isinstance(item['case'],int) and not isinstance(item['case'],bool)))
                 or not (item['component'] is None or isinstance(item['component'],str))):
             raise ValueError('Review decision rule and decision are text, case is an integer or null, component is text or null')
+        # Unverified decisions are kept in the audit, so their identifiers are bounded like check ids.
+        if not review_registry.ID.fullmatch(item['rule']) or (item['component'] is not None and len(item['component'])>64):
+            raise ValueError('Review decision rule must be a check id and component at most 64 characters')
         key=(item['rule'],item['case'],item['component'])
         if key in seen:raise ValueError(f'More than one review decision for flag {key}')
         seen.add(key)
