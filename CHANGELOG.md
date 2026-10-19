@@ -4,6 +4,7 @@ User-visible changes to MCDXKit (formerly gdcalc). The format follows [Keep a Ch
 
 ## Unreleased
 
+- Batch runs print a review summary line (`12 reports, 2 with items to review`, naming reports that were not checked, reports that failed to convert and reports where some checks could not run), add `review_items` and `check_error` columns to the per-report check table and CSV, and report the same counts under `review` in the stdout summary. Review items stay advisory: worksheets are unchanged and exit codes are unchanged.
 - Simplify ordinary Ask: preserve requested tables, open questions and conflicts, check project citation identities, and show advisory number warnings without a second model verifier or a 40-statement cutoff. Details and audit receipts distinguish citation checks from historical model checks. Requirement extraction, human review and calculation input validation remain separate.
 
 - Return to the workspace after ChatGPT consent without rejecting the browser's top-level cross-site navigation. Retain completed stream items when ChatGPT's terminal event has an empty output array so Ask receives its answers and tool calls. API, frame, Host, Origin, session and stream-completion checks remain enforced.

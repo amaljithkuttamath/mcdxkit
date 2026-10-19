@@ -193,8 +193,9 @@ def resumed_checks(page, region_lines):
     return worksheet_checks.extract(page.decode('utf-8'), region_lines)[1]
 
 
+# Review columns are appended, so anything parsing the earlier columns keeps working.
 CHECK_COLUMNS = ('source', 'status', 'checks', 'passed', 'failed', 'governing_dc', 'governing_check',
-                 'failed_checks', 'note')
+                 'failed_checks', 'note', 'review_items', 'check_error')
 
 
 def source_label(source, base=None):
@@ -218,6 +219,11 @@ def check_row(result, base=None):
     """One table row per report; outcomes come only from validated check summaries."""
     row = dict.fromkeys(CHECK_COLUMNS, '')
     row.update(source=source_label(result['source'], base), status=result['status'])
+    # Advisory review: blank when no check ran, so "nothing ran" never reads as nothing to review.
+    items, errors = result.get('open_checks'), result.get('check_errors')
+    row['review_items'] = '' if items is None else items
+    # "no" would read as a clean review when nothing ran (--checks none); failures still show "yes".
+    row['check_error'] = 'yes' if errors else '' if items is None else 'no'
     summary = result.get('check_summary')
     if result['status'] == 'failed':
         row['note'] = 'conversion failed'
@@ -260,12 +266,40 @@ def write_check_table(root, rows):
 
 def format_check_table(rows):
     """Plain-text per-report table: governing D/C and any failed checks."""
-    columns = ('source', 'status', 'checks', 'failed', 'governing_dc', 'governing_check', 'note')
+    columns = ('source', 'status', 'checks', 'failed', 'governing_dc', 'governing_check', 'note',
+               'review_items', 'check_error')
     widths = {c: max([len(c)] + [len(str(r[c])) for r in rows]) for c in columns}
     lines = ['  '.join(c.upper().ljust(widths[c]) for c in columns)]
     lines += ['  '.join(str(r[c]).ljust(widths[c]) for c in columns) for r in rows]
     lines += [f"{r['source']}: failed {r['failed_checks']}" for r in rows if r['failed_checks']]
     return '\n'.join(line.rstrip() for line in lines)
+
+
+def review_counts(rows):
+    """Batch-level advisory review tally over the per-report table rows."""
+    return {'reports': len(rows),
+            'reports_checked': sum(1 for r in rows if r['review_items'] != ''),
+            'reports_failed': sum(1 for r in rows if r['status'] == 'failed'),
+            'reports_with_items': sum(1 for r in rows if r['review_items'] not in ('', 0)),
+            'items': sum(r['review_items'] for r in rows if r['review_items'] != ''),
+            'reports_with_check_errors': sum(1 for r in rows if r['check_error'] == 'yes')}
+
+
+def format_review_summary(counts):
+    """One plain line: how many reports, how many have something to review, checks that could not run."""
+    def reports(count):
+        return f'{count} report' + ('' if count == 1 else 's')
+    line = f"{reports(counts['reports'])}, {counts['reports_with_items']} with items to review"
+    # A report where no check ran is never counted as having nothing to review.
+    # Failed conversions are named as such, not folded into "not checked".
+    unchecked = counts['reports'] - counts['reports_checked'] - counts['reports_failed']
+    if unchecked:
+        line += f", {unchecked} not checked"
+    if counts['reports_failed']:
+        line += f", {counts['reports_failed']} failed to convert"
+    if counts['reports_with_check_errors']:
+        line += f", {reports(counts['reports_with_check_errors'])} where some checks could not run"
+    return line
 
 
 def convert_batch(inputs, template, output_dir, *, workers=1, recursive=False, resume=False,
@@ -339,6 +373,9 @@ def convert_batch(inputs, template, output_dir, *, workers=1, recursive=False, r
                             'reports_with_failures': sum(1 for r in table if r['failed'] not in ('', 0)),
                             'reports_without_checks': sum(1 for r in table if r['note'] == 'no checks found'),
                             'reports_not_recorded': sum(1 for r in table if r['note'] == 'checks not recorded for this output')}
+        # Advisory only: review items never change the exit code.
+        counts['review'] = review_counts(table)
+        counts['review']['summary'] = format_review_summary(counts['review'])
     counts['elapsed_seconds'] = round(time.monotonic() - started, 3)
     return counts
 
@@ -375,6 +412,7 @@ def main(argv=None):
                                 load_source=args.load_source, overrides=overrides, checks=args.checks, progress=progress,
                                 check_rows=rows,input_map=parse_input_map(args.map))
         print(format_check_table(rows), file=sys.stderr)
+        print(summary['review']['summary'], file=sys.stderr)
         print('Check summary table: ' + summary['checks']['table'], file=sys.stderr, flush=True)
 
         print(json.dumps(summary, indent=2))
