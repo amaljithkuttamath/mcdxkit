@@ -318,6 +318,14 @@ main .case-caption, .queue-heading, .template-panel > p { color: var(--text-seco
 }
 .case-label.dominated { color: var(--muted); }
 .dominance-note { margin: 8px 0 0; color: var(--muted); }
+.similar-jobs summary { color: var(--muted); }
+.similar-jobs > .small { margin: 4px 0 0; }
+.similar-list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 10px; font-size: 12px; }
+.similar-list li { display: grid; gap: 2px; min-width: 0; }
+.similar-name { font-weight: 500; color: #c9d0dc; overflow-wrap: anywhere; }
+.similar-folder { font-weight: 400; color: var(--muted); }
+.similar-list small { margin: 0; }
+.similar-diffs { display: flex; flex-wrap: wrap; gap: 4px 12px; color: #a2aaba; font-variant-numeric: tabular-nums; }
 
 /* Shared workflow context stays available beside every document view. */
 .workflow-position { margin: 0 0 12px; color: #b8c3d1; font-size: 12px; }

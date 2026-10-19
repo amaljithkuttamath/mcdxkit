@@ -142,6 +142,7 @@ function render(){
     if(item.inspection){card.append(pairValidation(item.inspection));const caseDetails=el('details',undefined,'load-cases');caseDetails.open=item.casesOpen??Boolean(item.inspection.selection_required);caseDetails.addEventListener('toggle',()=>{item.casesOpen=caseDetails.open;});caseDetails.append(el('summary',`${item.selected.length} of ${item.inspection.cases.length} load cases selected`),el('p',item.inspection.summary_only?'Summary-only report: case names are absent. Choose the load cases to include.':item.inspection.selection_required?'Choose the load cases to include.':'STR cases selected by default.','case-caption'));const cases=el('div',undefined,'cases');for(const c of item.inspection.cases){const label=el('label',undefined,'case-label'),input=el('input');input.type='checkbox';input.checked=item.selected.includes(c.id);input.addEventListener('change',()=>run(async()=>{item.selected=input.checked?[...item.selected,c.id].sort((a,b)=>a-b):item.selected.filter(id=>id!==c.id);await refresh(item);}));label.append(input,document.createTextNode(`${c.id}: ${c.name||'Unnamed'}`));if(dominanceOf(item.inspection.review_checks)?.dominated?.some(x=>x.case===c.id)){label.classList.add('dominated');label.title='Never governs any envelope component (advisory hint; selection unchanged)';}cases.append(label);}caseDetails.append(cases);card.append(caseDetails);
       if(item.inspection.envelope){const values=el('div',undefined,'envelope');for(const [key,value]of Object.entries(item.inspection.envelope)){const cell=el('div',undefined,'measure');const label=el('span',undefined,'measure-label');const gov=item.inspection.governing?.[key];label.append(el('span',({P:'Axial load',Vy:'Shear y',Vz:'Shear z',My:'Moment y',Mz:'Moment z'})[key]||key),el('small',gov?`${key} · case ${gov.case}${gov.case_name?' '+gov.case_name:''}${gov.lead_ratio&&gov.lead_ratio>=1.5?` · ${gov.lead_ratio.toFixed(1)}× next case`:''}`:key));cell.append(label,el('strong',Number(value.toPrecision(6)).toString()),el('small',key.startsWith('M')?'kip-in':'kip'));values.append(cell);}card.append(values);}
       {const note=dominanceView(item.inspection.review_checks,item.inspection.cases);if(note)card.append(note);}
+      {const similar=similarView(item);if(similar)card.append(similar);}
     }
     if(item.inspection?.review_checks?.flags?.length||item.inspection?.review_checks?.errors?.length)card.append(reviewView(item.inspection.review_checks));
     if(item.advice)card.append(adviceView(item));
@@ -182,6 +183,19 @@ function dominanceOf(review){return review?.annotations?.find(a=>a.kind==='domin
 function dominanceView(review,cases){
   const d=dominanceOf(review);if(!d?.dominated?.length)return null;const name=id=>{const c=cases.find(x=>x.id===id);return `${id}${c?.name?' '+c.name:''}`;};
   const box=el('div',undefined,'dominance');box.append(el('p',(d.basis==='selected'?'Never governs (advisory hint; cases stay selected): ':'Never governs, on a review-only fallback basis of all cases except extreme-event names (not a selection): ')+d.dominated.map(x=>`case ${name(x.case)} (≤ case ${x.dominated_by.join(', ')} in every component)`).join('; ')+'.','small dominance-note'));return box;
+}
+// Earlier conversions in the same output folder with the closest envelopes; context only, never applied.
+function similarView(item){
+  const jobs=(item.inspection.review_checks?.annotations||[]).filter(a=>a.kind==='similar_job').map(a=>a.data);if(!jobs.length)return null;
+  const box=el('details',undefined,'similar-jobs');box.open=Boolean(item.similarOpen);box.addEventListener('toggle',()=>{item.similarOpen=box.open;});
+  box.append(el('summary',`Similar past jobs in this folder · ${jobs.length}`),el('p','Earlier conversions in this output folder with the closest selected-case envelopes. Percentages are the past job relative to this report. For reference only; nothing here changes inputs, cases or results.','small'));
+  const pct=v=>(v>0?'+':'')+(Math.abs(v)<10?v.toFixed(1):Math.round(v))+'%';
+  const list=el('ul',undefined,'similar-list');for(const j of jobs){const row=el('li');const diffs=el('div',undefined,'similar-diffs');for(const [k,v]of Object.entries(j.difference_pct||{}))diffs.append(el('span',`${k} ${pct(v)}`));
+    // File name first; a short folder id keeps two jobs from the same report apart. Full relative name on hover.
+    const parts=j.name.split('/'),file=parts.pop(),folder=parts.join('/'),title=el('b',file,'similar-name');title.title=j.name;
+    if(folder)title.append(el('span',` · ${folder.length>4?folder.slice(0,4)+'…':folder}`,'similar-folder'));
+    row.append(title,el('small',[j.date,j.template,`case${j.cases.length===1?'':'s'} ${j.cases.join(', ')}`,j.typical_difference_pct<0.5?'same envelope':`about ${pct(j.typical_difference_pct).replace('+','')} apart overall`].filter(Boolean).join(' · ')),diffs);list.append(row);}
+  box.append(list);return box;
 }
 function adviceView(item){
   const a=item.advice,box=el('section',undefined,'advice');box.setAttribute('aria-label','Suggested load cases');box.append(el('h4','Suggested cases · local model, advisory'),el('p',`Classified from case names by a model trained on ${a.trained_on.seed} common names`+(a.trained_on.history?` and ${a.trained_on.history} case names from your earlier conversions.`:'. It learns your naming from each conversion you complete.'),'small'));

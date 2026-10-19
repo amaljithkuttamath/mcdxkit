@@ -19,11 +19,11 @@ The one-time engine build needs Git and the .NET 10 SDK. The resulting executabl
 ```bash
 mcdxkit inspect /path/to/report.gp11t
 mcdxkit inspect /path/to/report.gp11t --cases 1,3,7
-mcdxkit inspect /path/to/report.gp11t --history /path/to/earlier-results   # learn case naming
+mcdxkit inspect /path/to/report.gp11t --history /path/to/earlier-results   # learn case naming, list similar past jobs
 mcdxkit inspect /path/to/report.gp11t --checks none                        # no review checks
 ```
 
-Inspection returns cases, selected cases, load basis and an envelope where selection is resolved. Default selection recognizes `STR` case names and excludes service cases. If classification is unresolved, obtain the intended case IDs; do not guess. `case_suggestions` classifies every case name (strength, service, extreme, fatigue, other or unknown) with confidence and evidence and lists `recommended_cases`; it is advisory, so pass reviewed IDs to `--cases` yourself. `--history OUTPUT_DIR` (inspect only) learns naming conventions from completed conversion audits in that directory. Reports must be GROUP text in the supported kip/in convention, not Excel binaries.
+Inspection returns cases, selected cases, load basis and an envelope where selection is resolved. Default selection recognizes `STR` case names and excludes service cases. If classification is unresolved, obtain the intended case IDs; do not guess. `case_suggestions` classifies every case name (strength, service, extreme, fatigue, other or unknown) with confidence and evidence and lists `recommended_cases`; it is advisory, so pass reviewed IDs to `--cases` yourself. `--history OUTPUT_DIR` (inspect only) learns naming conventions from completed conversion audits in that directory and lists up to three of its earlier conversions with the closest envelopes in `similar_jobs` (derived from the `similar_job` annotations in `review_checks`) ([similar past jobs](machine-learning.md#similar-past-jobs)). Reports must be GROUP text in the supported kip/in convention, not Excel binaries.
 
 ### Reports that start at the summary
 

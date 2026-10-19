@@ -4,6 +4,7 @@ User-visible changes to MCDXKit (formerly gdcalc). The format follows [Keep a Ch
 
 ## Unreleased
 
+- Similar past jobs: inspection (browser, and CLI with `--history DIR`) lists up to three earlier conversions in the same output directory whose selected-case envelopes are closest (log10 distance over P, Vy, Vz, My, Mz), with per-component % differences, in a collapsed "Similar past jobs in this folder" disclosure on the Inputs card. Offline and advisory only: it never searches other output directories, never changes inputs or outputs, and ignores unreadable audits. Audits now record `units` and `template_name`. It needs history, so it is left out of batch job identities: resuming an earlier batch does not reconvert.
 - Simplify ordinary Ask: preserve requested tables, open questions and conflicts, check project citation identities, and show advisory number warnings without a second model verifier or a 40-statement cutoff. Details and audit receipts distinguish citation checks from historical model checks. Requirement extraction, human review and calculation input validation remain separate.
 
 - Return to the workspace after ChatGPT consent without rejecting the browser's top-level cross-site navigation. Retain completed stream items when ChatGPT's terminal event has an empty output array so Ask receives its answers and tool calls. API, frame, Host, Origin, session and stream-completion checks remain enforced.

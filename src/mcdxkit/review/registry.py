@@ -12,6 +12,7 @@ from importlib import metadata
 from typing import Any, Collection, List, Optional, Tuple
 
 from .annotate.cases import Dominance, GoverningCases
+from .annotate.similar import SimilarJobs
 from .checks.consistency import DuplicateCase, EffectsBelowTop, ServiceAxialAboveStrength
 from .checks.magnitude import GrossMagnitude
 from .checks.ratios import RatioOutlier
@@ -25,7 +26,7 @@ ID = re.compile(r'[a-z][a-z0-9_]{0,63}')
 def builtins() -> Tuple[Any, ...]:
     """Built-in plug-ins in their fixed run order."""
     return (ServiceAxialAboveStrength(), EffectsBelowTop(), DuplicateCase(), RatioOutlier(), GrossMagnitude(),
-            GoverningCases(), Dominance(), CaseNames())
+            GoverningCases(), Dominance(), SimilarJobs(), CaseNames())
 
 
 @dataclass(frozen=True)

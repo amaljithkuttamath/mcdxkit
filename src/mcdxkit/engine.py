@@ -11,6 +11,7 @@ from pathlib import Path
 from . import group_report, mcdx, calcpad
 from . import checks as worksheet_checks
 from .review import runner as review_runner
+from .review.view import AUDIT_UNITS
 
 
 
@@ -138,13 +139,14 @@ def inspect_report(report, *, cases=None, load_source='effects', checks='default
     review.runner.prepare() resolved once by a long-running caller); ``history``
     is an optional review.api.HistoryStore the case-name classifier learns from."""
     plan=review_runner.prepare(checks)
-    _,parsed=_read_report(report,load_source)
+    raw,parsed=_read_report(report,load_source)
     issue=None
     try:selected=group_report.select(parsed,cases)
     except ValueError as exc:
         if cases is not None:raise
         selected=[];issue=str(exc)
-    block=review_runner.review(parsed,[c['id'] for c in selected],plan=plan,history=history)
+    block=review_runner.review(parsed,[c['id'] for c in selected],plan=plan,history=history,
+                              source_sha256=hashlib.sha256(raw).hexdigest())
     result={'source':Path(report).name,'summary_only':parsed['summary_only'],
             'cases':[{'id':c['id'],'name':c['name']} for c in parsed['cases']],
             'selected_cases':[c['id'] for c in selected],'selection_required':issue,
@@ -162,12 +164,14 @@ def inspect_report(report, *, cases=None, load_source='effects', checks='default
 
 
 def convert(report, template, output, *, cases=None, load_source='effects', title=None, overrides=None,
-            checks='default', review_decisions=None, input_map=None):
+            checks='default', review_decisions=None, input_map=None, template_name=None):
     """Generate .mcdx, executable .cpd, calculated .html and .audit.json. Never overwrite sources or existing outputs.
 
     The advisory review (``checks``) and any ``review_decisions`` are recorded in the audit. Only when
     a decision exists does the worksheet gain a plain-text "Automated input checks" note; otherwise
-    the .mcdx, .cpd and .html are identical with checks on or off."""
+    the .mcdx, .cpd and .html are identical with checks on or off. ``template_name`` is the file
+    name recorded in the audit (defaults to the template's own name), for callers that convert
+    from a snapshot copy."""
     plan=review_runner.prepare(checks)
     report=Path(report).resolve();template=Path(template).resolve();output=Path(output).resolve()
     audit=output.with_suffix('.audit.json')
@@ -191,6 +195,7 @@ def convert(report, template, output, *, cases=None, load_source='effects', titl
         result.update({'output':str(output),'audit':str(audit),'source_sha256':hashlib.sha256(raw).hexdigest(),
                        'geometry_case_ids':[c['id'] for c in parsed['cases']],
                        'case_names':{str(c['id']):c['name'] for c in parsed['cases']},
+                       'units':dict(AUDIT_UNITS),'template_name':Path(template_name or template.name).name,
                        'review_checks':block})
         cpd_staged=Path(folder)/'worksheet.cpd'; html_staged=Path(folder)/'worksheet.html'
         calculation=calcpad.calculate(staged,cpd_staged,html_staged)

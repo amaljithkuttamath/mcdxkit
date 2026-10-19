@@ -129,12 +129,33 @@ class Suggestion:
     basis: Mapping[str, Any] = field(default_factory=frozen_mapping)
 
 
+@dataclass(frozen=True)
+class PastJob:
+    """One completed conversion in the same output directory, as its audit recorded it.
+
+    ``name`` is the worksheet path relative to that output directory (never absolute);
+    ``date`` is the audit's modification date (UTC, YYYY-MM-DD); ``envelope`` holds the
+    selected-case peaks per component; ``template`` is the template file name, when recorded.
+    """
+    name: str
+    date: str
+    envelope: Mapping[str, float]
+    cases: Tuple[int, ...]
+    load_source: str
+    units: Mapping[str, str]
+    source_sha256: Optional[str] = None
+    template: Optional[str] = None
+
+
 class HistoryStore(Protocol):
     """Read-only past decisions: (case name, was it selected) from completed conversions.
-    A store may also have ``skipped``, the number of past audits it could not read."""
+    A store may also have ``skipped``, the number of past audits it could not read, and
+    ``past_jobs()``, the PastJob records of the same output directory."""
     def case_examples(self) -> Tuple[Tuple[str, bool], ...]: ...
 
 
 @dataclass(frozen=True)
 class Context:
+    """``source_sha256`` identifies the report under review, when the caller knows it."""
     history: Optional[HistoryStore] = None
+    source_sha256: Optional[str] = None

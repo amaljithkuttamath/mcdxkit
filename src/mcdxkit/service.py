@@ -8,7 +8,7 @@ import shutil
 from pathlib import Path
 from . import checks, engine, inspection, standards
 from .review import runner as review_runner
-from .review.history import AuditHistory, newest
+from .review.history import AuditHistory, newest, signature
 
 
 MIB = 1024 * 1024
@@ -117,10 +117,12 @@ class Session:
         return {**result, **details}
 
     def inspect(self, path, cases=None, load_source='effects'):
-        # The case-name classifier learns from completed conversions in the output directory,
-        # read once per completed conversion rather than on every inspection.
-        if self._history is None or self._history[0] != self.conversions:
-            self._history = (self.conversions, AuditHistory(self.output_dir))
+        # The case-name classifier and similar-jobs annotator read completed conversions in the
+        # output directory. They are re-read only when this session converts or the directory's
+        # cheap freshness signature changes (a batch or CLI conversion, or a deletion, there).
+        key = (self.conversions, signature(self.output_dir))
+        if self._history is None or self._history[0] != key:
+            self._history = (key, AuditHistory(self.output_dir))
         return engine.inspect_report(path, cases=cases, load_source=load_source, checks=self.plan,
                                      history=self._history[1])
 
@@ -241,7 +243,8 @@ class Session:
             shutil.copyfile(entry['path'], snapshot_report)
             shutil.copyfile(template, snapshot_template)
             result = engine.convert(snapshot_report, snapshot_template, output, cases=cases,
-                                    load_source=basis, title=title, overrides=overrides, checks=self.plan,input_map=data.get('input_map'))
+                                    load_source=basis, title=title, overrides=overrides, checks=self.plan,
+                                    input_map=data.get('input_map'), template_name=template.name)
             changes = inspection.diff(snapshot_template, output)
         except Exception:
             shutil.rmtree(folder)

@@ -4,7 +4,7 @@
 * ``view``: builds the frozen ReportView from the dict ``group_report.parse()`` returns.
 * ``registry``: built-ins (on by default) and ``mcdxkit.review`` entry points (off unless named).
 * ``runner``: isolated, time-budgeted execution and the ``review-checks/1`` report.
-* ``history``: HistoryStore adapters for the case-name classifier.
+* ``history``: HistoryStore adapters for the case-name classifier and similar past jobs.
 
 Advisory only: nothing here changes inputs, case selection, overrides, worksheets or results.
 This package must not import the parser, package editor, calculator, engine, server, service,

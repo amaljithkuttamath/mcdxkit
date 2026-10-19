@@ -60,7 +60,7 @@ def main(argv=None,prog=None):
     parser.add_argument('--title',help='Title on generated source pages; template header remains unchanged')
     parser.add_argument('--set',action='append',default=[],metavar='VARIABLE=VALUE',help='Override a single literal template input, retaining its units')
     parser.add_argument('--checks',default='default',metavar='SPEC',help='Advisory review plug-ins: default (built-ins), none, or a comma list such as default,my_check; see "mcdxkit checks list"')
-    parser.add_argument('--history',type=Path,metavar='OUTPUT_DIR',help='Inspect only: learn case naming from completed conversion audits in this output directory')
+    parser.add_argument('--history',type=Path,metavar='OUTPUT_DIR',help='Inspect only: learn case naming from, and list similar past jobs in, the completed conversion audits of this output directory')
     args=parser.parse_args(argv)
     try:
         mapping=input_map(args.map)
@@ -78,8 +78,12 @@ def main(argv=None,prog=None):
                 from .review.history import AuditHistory
                 if not args.history.is_dir():raise ValueError('--history must be an existing output directory')
                 history=AuditHistory(args.history)
-            print(json.dumps(engine.inspect_report(args.input,cases=args.cases,load_source=args.load_source,checks=args.checks,history=history,
-                                                  template=args.template,input_map=mapping,overrides=overrides),indent=2))
+            inspected=engine.inspect_report(args.input,cases=args.cases,load_source=args.load_source,checks=args.checks,history=history,
+                                            template=args.template,input_map=mapping,overrides=overrides)
+            if history is not None:
+                # Convenience view of the similar-jobs annotations; review_checks holds the source.
+                inspected['similar_jobs']=[a['data'] for a in inspected['review_checks']['annotations'] if a['kind']=='similar_job']
+            print(json.dumps(inspected,indent=2))
             return 0
         if args.history is not None:raise ValueError('--history applies to inspect only')
         if args.output is None:raise ValueError('--output is required unless using --inspect')

@@ -171,7 +171,8 @@ def _convert_job(job):
             else:
                 with metadata.open('x') as stream:
                     json.dump(identity, stream, indent=2)
-            result = engine.convert(snapshots[0][1], snapshots[1][1], output, **job['settings'])
+            result = engine.convert(snapshots[0][1], snapshots[1][1], output, **job['settings'],
+                                    template_name=Path(job['template']).name)
             row.update(status='succeeded', sha256=result['sha256'], audit=str(audit),
                        cases=result['cases'], envelope=result['envelope'], check_summary=result['check_summary'],
                        open_checks=review_runner.open_flags(result['review_checks']),

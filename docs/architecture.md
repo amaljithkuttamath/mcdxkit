@@ -59,7 +59,7 @@ flowchart LR
 | `web/` | Browser workflow and file viewer; no independent design solver |
 | `batch.py` | Input discovery, bounded process pool, job identity, manifest and resume |
 | `template_library.py` | Workspace template library: hash-addressed `.mcdx` storage, versions by name, archive (never delete), verified paths |
-| `review/` | Advisory review checks as plug-ins, shared by inspect, convert, batch and browser: `api.py` (plug-in contract, standard library only), `view.py` (frozen `ReportView` from the parsed dict), `registry.py` (built-ins and `mcdxkit.review` entry points), `runner.py` (isolated, time-budgeted runs; `review-checks/1` report), `history.py` (past audits for the classifier), `checks/`, `annotate/`, `classify/` |
+| `review/` | Advisory review checks as plug-ins, shared by inspect, convert, batch and browser: `api.py` (plug-in contract, standard library only), `view.py` (frozen `ReportView` from the parsed dict), `registry.py` (built-ins and `mcdxkit.review` entry points), `runner.py` (isolated, time-budgeted runs; `review-checks/1` report), `history.py` (past audits of one output directory, for the classifier and similar past jobs), `checks/`, `annotate/`, `classify/` |
 | `summary.py` | `mcdxkit summary` input discovery and exclusive CSV write; rows come from `engine.py` |
 
 ### Review dependency rule

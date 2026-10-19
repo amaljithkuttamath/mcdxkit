@@ -10,6 +10,8 @@ from .api import (ALONG_PILE_COLUMNS, COMPONENTS, PILE_TOP_COLUMNS, CaseView, Re
 
 UNITS = frozen_mapping({'force': 'kip', 'moment': 'kip-in', 'P': 'kip', 'Vy': 'kip', 'Vz': 'kip',
                         'My': 'kip-in', 'Mz': 'kip-in', 'V': 'kip'})
+# The unit system recorded in conversion audits, so history compares like with like.
+AUDIT_UNITS = frozen_mapping({key: UNITS[key] for key in ('force', 'moment')})
 
 
 def _ranges(rows, names):
